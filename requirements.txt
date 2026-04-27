@@ -1,0 +1,13 @@
+pandas
+numpy
+scikit-learn
+matplotlib
+seaborn
+xgboost
+jupyter
+notebook
+sqlalchemy
+pymysql
+python-dotenv
+pyyaml
+joblib

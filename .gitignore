@@ -1,0 +1,92 @@
+# Scania APS 预测性维护项目 .gitignore
+
+# Python 缓存
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# 虚拟环境
+.venv/
+venv/
+env/
+ENV/
+
+# Jupyter 临时文件
+.ipynb_checkpoints/
+*.nbconvert.ipynb
+
+# 环境变量和本地敏感配置
+.env
+.env.*
+!.env.example
+config/config_local.yaml
+config/*_local.*
+*.local.yaml
+
+# 原始数据和中间数据文件
+# 只保留目录占位文件，不把大型 CSV 数据提交到 Git。
+data/raw/*
+data/interim/*
+data/processed/*
+!data/raw/.gitkeep
+!data/interim/.gitkeep
+!data/processed/.gitkeep
+
+# 训练产物和模型文件
+models/*
+!models/.gitkeep
+*.pkl
+*.pickle
+*.joblib
+*.h5
+*.pt
+*.onnx
+*.pb
+*.savedmodel/
+
+# 输出产物
+outputs/figures/*
+outputs/metrics/*
+outputs/predictions/*
+outputs/tables/*
+!outputs/figures/.gitkeep
+!outputs/metrics/.gitkeep
+!outputs/predictions/.gitkeep
+!outputs/tables/.gitkeep
+
+# 报告导出物，手写 Markdown 报告保留
+reports/*.html
+reports/*.pdf
+
+# 本地数据库、日志和临时文件
+*.log
+*.sqlite
+*.sqlite3
+*.db
+tmp/
+temp/
+
+# 测试、覆盖率和代码检查缓存
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+*.cover
+.mypy_cache/
+.ruff_cache/
+
+# 打包产物
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# 编辑器和系统文件
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+Thumbs.db
+desktop.ini

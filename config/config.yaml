@@ -1,0 +1,36 @@
+project:
+  name: scania_aps_predictive_maintenance
+  stage: day_1_project_initialization_and_business_understanding
+
+paths:
+  train_raw: data/raw/aps_failure_training_set.csv
+  test_raw: data/raw/aps_failure_test_set.csv
+  interim_dir: data/interim
+  processed_dir: data/processed
+  figures_dir: outputs/figures
+  metrics_dir: outputs/metrics
+  predictions_dir: outputs/predictions
+  tables_dir: outputs/tables
+  reports_dir: reports
+
+data:
+  label_column: class
+  missing_value_token: na
+  positive_label: pos
+  negative_label: neg
+  target_mapping:
+    pos: 1
+    neg: 0
+
+business_cost:
+  false_positive: 10
+  false_negative: 500
+
+evaluation:
+  primary_metrics:
+    - precision
+    - recall
+    - f1
+    - f2
+    - pr_auc
+    - total_cost
