@@ -1,0 +1,5 @@
+﻿dataset,class,count,ratio
+train,neg,59000,0.9833333333333333
+train,pos,1000,0.016666666666666666
+test,neg,15625,0.9765625
+test,pos,375,0.0234375

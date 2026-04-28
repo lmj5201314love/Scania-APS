@@ -1,0 +1,17 @@
+﻿feature_name,missing_count,total_count,missing_rate,dataset,is_missing_ge_50,is_missing_ge_80,is_missing_eq_100
+br_000,13129,16000,0.8205625,test,True,True,False
+bq_000,12981,16000,0.8113125,test,True,True,False
+bp_000,12721,16000,0.7950625,test,True,False,False
+bo_000,12376,16000,0.7735,test,True,False,False
+ab_000,12363,16000,0.7726875,test,True,False,False
+cr_000,12363,16000,0.7726875,test,True,False,False
+bn_000,11713,16000,0.7320625,test,True,False,False
+bm_000,10546,16000,0.659125,test,True,False,False
+br_000,49264,60000,0.8210666666666666,train,True,True,False
+bq_000,48722,60000,0.8120333333333334,train,True,True,False
+bp_000,47740,60000,0.7956666666666666,train,True,False,False
+bo_000,46333,60000,0.7722166666666667,train,True,False,False
+ab_000,46329,60000,0.77215,train,True,False,False
+cr_000,46329,60000,0.77215,train,True,False,False
+bn_000,44009,60000,0.7334833333333334,train,True,False,False
+bm_000,39549,60000,0.65915,train,True,False,False

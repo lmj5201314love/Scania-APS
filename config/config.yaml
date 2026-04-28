@@ -1,6 +1,6 @@
 project:
   name: scania_aps_predictive_maintenance
-  stage: day_1_project_initialization_and_business_understanding
+  stage: day_3_sql_data_quality_analysis
 
 paths:
   train_raw: data/raw/aps_failure_training_set.csv

@@ -109,3 +109,52 @@ train/test 缺失率差异整体很小。差异最大的字段为 `cl_000` 和 `
 ## Day 3 建议
 
 Day 3 建议进入 SQL 数据质量分析支持阶段：基于 Day 2 的发现，编写 SQL 脚本复核数据规模、标签分布、缺失字段统计、高缺失字段清单和基础质量检查。SQL 阶段仍不做建模、不做填充、不做阈值优化，重点是让数据质量分析可以被数据库查询复现。
+
+# Day 3 SQL 数据质量分析支持总结
+
+## Day 3 目标
+
+Day 3 的目标是让 Day 2 的核心数据质量分析可以被 MySQL / SQL 查询复现，体现 SQL 在制造业数据分析项目中的作用。本阶段只准备 SQL 脚本、建表结构、导入后检查和缺失率复核查询，不进行模型训练、缺失值填充、字段删除或阈值优化。
+
+## SQL 文件完成情况
+
+已完善以下 SQL 文件：
+
+- `sql/00_init_database.sql`：创建并切换到 `scania_aps_project` 数据库，字符集使用 `utf8mb4`。
+- `sql/01_create_tables.sql`：根据原始 CSV 表头自动生成 raw 宽表，并创建 `dataset_overview`、`label_distribution`、`feature_missing_summary` 和后续预留的 `model_prediction_result` 表。
+- `sql/02_import_check.sql`：提供导入后行数、标签取值、标签分布、`class` 空值和 `sample_id` 唯一性检查。
+- `sql/03_data_quality_analysis.sql`：提供数据集概览、标签分布、`class` 空值、target 映射和主键完整性检查。
+- `sql/04_label_and_missing_analysis.sql`：提供标签分布、缺失率分层、高缺失字段、train/test 缺失率差异和 pos/neg 缺失率差异分析查询。
+- `sql/generated_missing_rate_analysis.sql`：由脚本自动生成逐字段缺失率 SQL，覆盖 train/test 整体缺失率和训练集 pos/neg 分组缺失率。
+
+## 可用 SQL 复核的 Day 2 发现
+
+Day 3 SQL 可以复核以下 Day 2 发现：
+
+1. 训练集 60,000 行、测试集 16,000 行。
+2. train/test 均包含 170 个匿名数值特征和 `class` 标签列。
+3. `pos` 样本占比很低，属于类别极不平衡问题。
+4. `br_000`、`bq_000`、`bp_000`、`bo_000`、`ab_000`、`cr_000`、`bn_000`、`bm_000` 等字段属于高缺失字段。
+5. train/test 缺失模式整体接近。
+6. pos/neg 缺失模式差异明显，后续可以进一步评估缺失模式是否对建模有帮助。
+7. `sample_id` 可作为导入后的行级主键，用于基础完整性检查和后续预测结果回写。
+
+## 当前 SQL 执行状态
+
+当前尚未真实连接本地 MySQL 执行这些 SQL。SQL 脚本已准备，待本地 MySQL 导入原始 CSV 后执行。项目报告中不能写成“SQL 已运行并得到结果”，只能表述为“SQL 复核脚本已准备完成”。
+
+## 新增支持文件
+
+新增 `scripts/generate_create_tables_sql.py`，用于根据原始训练集表头自动生成 `sql/01_create_tables.sql`，避免手写 170 个字段出错。
+
+新增 `scripts/generate_sql_missing_analysis.py`，用于生成 `sql/generated_missing_rate_analysis.sql`，复核宽表逐字段缺失率和 pos/neg 缺失模式差异。
+
+新增 `scripts/prepare_sql_support_tables.py`，用于将 Day 2 的输出表整理成适合导入 MySQL 辅助表的 CSV，包括 `dataset_overview`、`label_distribution` 和 `feature_missing_summary`。
+
+新增 `docs/mysql_import_guide.md`，说明如何创建数据库、创建表、导入 CSV、处理 `"na"` 缺失值，以及导入后应该运行哪些 SQL 检查脚本。
+
+新增 `reports/missing_value_strategy.md`，记录缺失值处理原则、高缺失字段关注清单和后续建模阶段可比较的处理方案。该文档只制定策略，不执行填充、删列或建模。
+
+## Day 4 建议
+
+Day 4 建议进入 baseline 建模准备阶段：在不使用测试集拟合任何规则的前提下，设计训练集内部验证方案，建立简单 baseline，并用 recall、F2、PR-AUC 和业务成本意识来评估模型方向。Day 4 开始前仍应避免直接删除高缺失字段或做未经验证的复杂特征工程。

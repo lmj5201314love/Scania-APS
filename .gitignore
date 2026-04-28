@@ -46,10 +46,10 @@ models/*
 *.savedmodel/
 
 # 输出产物
-outputs/figures/*
-outputs/metrics/*
-outputs/predictions/*
-outputs/tables/*
+# outputs/figures/*
+# outputs/metrics/*
+# outputs/predictions/*
+# outputs/tables/*
 !outputs/figures/.gitkeep
 !outputs/metrics/.gitkeep
 !outputs/predictions/.gitkeep
