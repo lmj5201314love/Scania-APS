@@ -199,3 +199,51 @@ Logistic Regression baseline 明显降低了漏报数量和总业务成本。其
 ## Day 5 建议
 
 Day 5 建议在当前 cfg、数据准备和评估函数的基础上训练提升模型，例如 Random Forest 或 XGBoost 的第一版模型，并继续使用 recall、F2、PR-AUC 和 total cost 作为核心评估指标。Day 5 可以比较不同模型与当前 Logistic Regression baseline 的差异，但仍应避免复杂 GridSearch 和阈值优化；阈值成本曲线更适合放到 Day 6 单独处理。
+
+# Day 5 提升模型对比总结
+
+## Day 5 目标
+
+Day 5 的目标是在 Day 4 baseline 基础上训练第一版提升模型，比较 Random Forest / XGBoost 与 Logistic Regression baseline 的差异。本阶段继续统一使用 `config/config.yaml` 读取路径、标签映射、缺失值 token、默认阈值、模型参数和业务成本；不修改原始数据，不合并 train/test 重新划分，不在测试集上拟合任何处理规则。
+
+## 使用的模型和缺失处理策略
+
+本阶段训练了两类提升模型：
+
+- `random_forest_balanced`：使用 `class_weight="balanced"` 处理类别不平衡。
+- `xgboost_scale_pos_weight`：使用 `scale_pos_weight = neg_count / pos_count` 处理类别不平衡。
+
+比较的缺失处理策略包括：
+
+- `median_all`：保留全部 170 个特征，使用训练集中位数填充。
+- `drop_high_missing_median`：只基于训练集缺失率删除 2 个缺失率大于等于 80% 的字段，再使用训练集中位数填充。
+- `median_with_indicator`：保留全部字段，并加入缺失指示变量后再做中位数填充。该策略本阶段用于 Random Forest。
+
+XGBoost 原生处理缺失值的策略暂未启用，避免 Day 5 范围过大；可以在后续模型优化阶段单独比较。
+
+## Day 5 主要结果
+
+以下结果来自 `outputs/metrics/day5_model_compare_metrics.csv`，默认阈值为 `0.5`，业务成本仍来自 cfg。
+
+| model_name | strategy | precision | recall | F2 | PR-AUC | FP | FN | total_cost |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| random_forest_balanced | median_all | 0.9367 | 0.5920 | 0.6390 | 0.8842 | 15 | 153 | 76650 |
+| xgboost_scale_pos_weight | median_all | 0.6357 | 0.9120 | 0.8391 | 0.9113 | 196 | 33 | 18460 |
+| random_forest_balanced | drop_high_missing_median | 0.9383 | 0.5680 | 0.6167 | 0.8830 | 14 | 162 | 81140 |
+| xgboost_scale_pos_weight | drop_high_missing_median | 0.6277 | 0.9173 | 0.8398 | 0.9091 | 204 | 31 | 17540 |
+| random_forest_balanced | median_with_indicator | 0.9485 | 0.5893 | 0.6376 | 0.8910 | 12 | 154 | 77120 |
+
+与 Day 4 最优 Logistic baseline 相比，XGBoost 的 PR-AUC 和 F2 更高，但在默认阈值 `0.5` 下 total cost 仍略高。Day 4 最优 Logistic + `drop_high_missing_median` 的 total cost 为 17,180；Day 5 最低 total cost 为 XGBoost + `drop_high_missing_median` 的 17,540。
+
+仅在 Day 5 提升模型内部比较：
+
+- recall 最高：XGBoost + `drop_high_missing_median`，recall 为 0.9173。
+- F2 最高：XGBoost + `drop_high_missing_median`，F2 为 0.8398。
+- PR-AUC 最高：XGBoost + `median_all`，PR-AUC 为 0.9113。
+- total cost 最低：XGBoost + `drop_high_missing_median`，total cost 为 17,540。
+
+如果把 Day 4 Logistic baseline 一起纳入比较，Logistic + `drop_high_missing_median` 在默认阈值下的 recall 为 0.9280、total cost 为 17,180，仍然略优于当前 XGBoost 的默认阈值结果；但 XGBoost 的 F2 和 PR-AUC 更高，说明它的概率排序能力更值得进入 Day 6 阈值成本分析。Random Forest 的 precision 很高，但 recall 明显低于 Logistic 和 XGBoost，因此在 FN 成本远高于 FP 的业务设定下，默认阈值下的总成本较高。当前还不能写成最终最优模型。
+
+## Day 6 建议
+
+Day 6 建议基于 Day 4 Logistic baseline 和 Day 5 XGBoost 模型做阈值成本分析：在不重新训练模型的前提下，对预测概率使用不同阈值，计算 FP、FN、recall、precision、F2 和 total cost 的变化，寻找业务成本更低且召回可接受的阈值。Day 6 的重点是阈值决策和成本曲线，不是继续做大规模模型调参。

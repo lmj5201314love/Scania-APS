@@ -57,4 +57,4 @@ FN 代表真实 APS 故障被漏掉，业务风险高于 FP。因此本项目不
 
 ## 当前阶段优先级
 
-当前已完成 Day 1-3，Day 4 聚焦 baseline 建模闭环：统一使用 `config/config.yaml` 读取路径、标签映射、缺失值 token、业务成本和默认模型参数，比较基础缺失处理策略，并输出成本敏感 baseline 指标。本阶段不做 XGBoost、不做 GridSearch、不做阈值遍历、不做风险分层。
+当前已完成 Day 1-4，Day 5 聚焦第一版提升模型对比：统一使用 `config/config.yaml` 读取路径、标签映射、缺失值 token、业务成本、默认阈值和模型参数，比较 Random Forest / XGBoost 与 Logistic baseline 的差异。本阶段不做复杂 GridSearch、不做阈值遍历、不做风险分层；成本必须继续来自 cfg，不以 accuracy 作为核心指标。

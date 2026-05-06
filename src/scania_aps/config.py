@@ -66,6 +66,7 @@ class ScaniaConfig:
     random_state: int
     default_threshold: float
     high_missing_threshold: float
+    advanced_models: dict[str, Any]
 
 
 def _require_sections(config: dict[str, Any], sections: list[str]) -> None:
@@ -89,7 +90,10 @@ def _validate_config(raw_config: dict[str, Any], project_root: Path) -> None:
     if not raw_config:
         raise ValueError("config.yaml 为空或无法解析。")
 
-    _require_sections(raw_config, ["paths", "data", "business_cost", "evaluation", "model"])
+    _require_sections(
+        raw_config,
+        ["paths", "data", "business_cost", "evaluation", "model", "advanced_models"],
+    )
 
     train_raw = _resolve_project_path(project_root, raw_config["paths"]["train_raw"])
     test_raw = _resolve_project_path(project_root, raw_config["paths"]["test_raw"])
@@ -110,6 +114,10 @@ def _validate_config(raw_config: dict[str, Any], project_root: Path) -> None:
     negative_label = raw_config["data"]["negative_label"]
     if positive_label not in target_mapping or negative_label not in target_mapping:
         raise ValueError("target_mapping 必须包含 positive_label 和 negative_label。")
+
+    advanced_models = raw_config["advanced_models"]
+    if "random_forest" not in advanced_models or "xgboost" not in advanced_models:
+        raise ValueError("advanced_models 必须包含 random_forest 和 xgboost 配置。")
 
 
 def get_config(config_path: str | Path | None = None) -> ScaniaConfig:
@@ -141,4 +149,5 @@ def get_config(config_path: str | Path | None = None) -> ScaniaConfig:
         random_state=raw_config["model"]["random_state"],
         default_threshold=raw_config["model"]["default_threshold"],
         high_missing_threshold=raw_config["model"]["high_missing_threshold"],
+        advanced_models=raw_config["advanced_models"],
     )

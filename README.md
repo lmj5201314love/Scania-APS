@@ -89,9 +89,9 @@ scania_aps_predictive_maintenance/
 
 ## 当前阶段
 
-当前已完成 Day 1 项目初始化、Day 2 数据质量与缺失分析、Day 3 SQL 支撑与缺失策略设计，并已进入 Day 4 baseline 建模阶段，第一版 baseline 已跑通。
+当前已完成 Day 1 项目初始化、Day 2 数据质量与缺失分析、Day 3 SQL 支撑与缺失策略设计、Day 4 baseline 建模闭环，并已进入 Day 5 模型提升阶段。
 
-Day 4 的重点是建立第一版 baseline，比较基础缺失处理策略，并用 precision、recall、F2、PR-AUC 和 total cost 输出成本敏感评估结果。本阶段不做 XGBoost、不做 GridSearch、不做阈值优化，也不把 accuracy 作为核心目标。
+Day 5 的重点是完成第一版 Random Forest / XGBoost 提升模型对比，继续比较基础缺失处理策略和类别不平衡处理方式，并用 precision、recall、F2、PR-AUC 和 total cost 输出成本敏感评估结果。本阶段不做 GridSearch、不做阈值遍历，也不把 accuracy 作为核心目标。
 
 ## 阶段性进展
 
@@ -99,12 +99,12 @@ Day 4 的重点是建立第一版 baseline，比较基础缺失处理策略，�
 - Day 2：基础数据质量与缺失值分析。
 - Day 3：SQL 数据质量分析支持。
 - Day 4：baseline 建模与成本敏感指标验证。
+- Day 5：Random Forest / XGBoost 第一版提升模型对比。
 
 `outputs/` 下的 CSV 表格、PNG 图表、模型指标和预测结果是本地运行产物，用于分析和报告整理，默认不提交到 GitHub。
 
 ## 后续计划
 
-- Day 4：跑通 baseline 模型闭环，比较 `median_all` 与 `drop_high_missing_median` 两种基础缺失处理策略。
-- Day 5：训练提升模型，并比较不同模型在 recall、F2、PR-AUC 和 total cost 上的表现。
+- Day 5：完成第一版提升模型对比，观察 Random Forest / XGBoost 与 Logistic baseline 的差异。
 - Day 6：进行阈值优化和成本敏感评估。
 - Day 7：整理项目报告、风险分层建议和简历表述。
