@@ -1,39 +1,12 @@
--- Day 3：标签与缺失值 SQL 分析
--- 目标：用 SQL 复核 Day 2 的标签分布、缺失率分层、高缺失字段、
--- train/test 缺失模式差异，以及 pos/neg 缺失模式差异。
--- 宽表逐列缺失率 SQL 由 scripts/generate_sql_missing_analysis.py 生成到
--- sql/generated_missing_rate_analysis.sql。
--- 也可以将 Day 2 产物 missing_summary_train.csv / missing_summary_test.csv
--- 导入 feature_missing_summary 后执行本文件中的汇总查询。
+-- Day 3：缺失值汇总分析 SQL
+-- 目标：基于 feature_missing_summary 复核 Day 2 的缺失率分层、
+-- 高缺失字段、train/test 缺失模式差异，以及 pos/neg 缺失模式差异。
+-- 本文件不直接逐列扫描 raw 宽表；逐列缺失率明细建议由 Python 产物导入，
+-- 或通过 scripts/generate_sql_missing_analysis.py 生成可选 SQL。
 
 USE scania_aps_project;
 
--- 1. 标签分布 SQL。
-WITH label_counts AS (
-  SELECT 'train' AS dataset, `class`, COUNT(*) AS sample_count
-  FROM raw_aps_train
-  GROUP BY `class`
-  UNION ALL
-  SELECT 'test' AS dataset, `class`, COUNT(*) AS sample_count
-  FROM raw_aps_test
-  GROUP BY `class`
-),
-dataset_counts AS (
-  SELECT 'train' AS dataset, COUNT(*) AS total_rows FROM raw_aps_train
-  UNION ALL
-  SELECT 'test' AS dataset, COUNT(*) AS total_rows FROM raw_aps_test
-)
-SELECT
-  lc.dataset,
-  lc.`class`,
-  lc.sample_count,
-  lc.sample_count / dc.total_rows AS sample_ratio
-FROM label_counts lc
-JOIN dataset_counts dc
-  ON lc.dataset = dc.dataset
-ORDER BY lc.dataset, lc.`class`;
-
--- 2. 缺失率分层统计。
+-- 1. 缺失率分层统计。
 -- 依赖 feature_missing_summary 中 summary_scope = 'overall' 的记录。
 SELECT
   dataset,
@@ -60,7 +33,7 @@ GROUP BY
   END
 ORDER BY dataset, MIN(missing_rate);
 
--- 3. 高缺失字段：只识别，不删除。
+-- 2. 高缺失字段：只识别，不删除。
 SELECT
   dataset,
   feature_name,
@@ -75,7 +48,7 @@ WHERE summary_scope = 'overall'
   AND missing_rate >= 0.50
 ORDER BY dataset, missing_rate DESC, feature_name;
 
--- 4. train/test 缺失率差异。
+-- 3. train/test 缺失率差异。
 WITH train_missing AS (
   SELECT feature_name, missing_rate AS train_missing_rate
   FROM feature_missing_summary
@@ -98,7 +71,7 @@ JOIN test_missing s
   ON t.feature_name = s.feature_name
 ORDER BY missing_rate_diff_abs DESC, t.feature_name;
 
--- 5. pos/neg 缺失率差异。
+-- 4. pos/neg 缺失率差异。
 -- 依赖 feature_missing_summary 中 summary_scope = 'by_class' 的训练集记录。
 WITH neg_missing AS (
   SELECT feature_name, missing_rate AS neg_missing_rate
@@ -124,7 +97,7 @@ JOIN pos_missing p
   ON n.feature_name = p.feature_name
 ORDER BY missing_rate_diff_abs DESC, n.feature_name;
 
--- 6. Day 2 发现复核说明：
+-- 5. Day 2 发现复核说明：
 -- - 训练集 pos 占比很低，属于类别极不平衡问题。
 -- - br_000、bq_000、bp_000、bo_000、ab_000、cr_000、bn_000、bm_000
 --   是 Day 2 识别出的高缺失字段，SQL 复核时应重点检查。

@@ -44,18 +44,7 @@ JOIN dataset_counts dc
   ON lc.dataset = dc.dataset
 ORDER BY lc.dataset, lc.`class`;
 
--- 3. class 空值检查。
-SELECT
-  'train' AS dataset,
-  SUM(CASE WHEN `class` IS NULL THEN 1 ELSE 0 END) AS null_class_count
-FROM raw_aps_train
-UNION ALL
-SELECT
-  'test' AS dataset,
-  SUM(CASE WHEN `class` IS NULL THEN 1 ELSE 0 END) AS null_class_count
-FROM raw_aps_test;
-
--- 4. target 映射检查：pos -> 1，neg -> 0。
+-- 3. target 映射检查：pos -> 1，neg -> 0。
 SELECT
   'train' AS dataset,
   `class`,
@@ -92,7 +81,7 @@ GROUP BY
     ELSE NULL
   END;
 
--- 5. sample_id 主键完整性检查。
+-- 4. sample_id 主键完整性检查。
 SELECT
   'train' AS dataset,
   COUNT(*) AS total_rows,

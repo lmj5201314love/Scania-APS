@@ -41,8 +41,16 @@ def map_target(
 ) -> pd.DataFrame:
     """将标签列映射为 target 列。"""
 
+    if label_col not in df.columns:
+        raise ValueError(f"标签列不存在：{label_col}")
+
     result = df.copy()
     result[target_col] = result[label_col].map(target_mapping)
+
+    unmapped_labels = sorted(result.loc[result[target_col].isna(), label_col].dropna().unique())
+    if unmapped_labels:
+        raise ValueError(f"存在无法映射的标签值：{unmapped_labels}")
+
     return result
 
 
@@ -59,3 +67,14 @@ def map_target_from_config(
         target_mapping=cfg.target_mapping,
         target_col=target_col,
     )
+
+
+def load_train_test_with_target(
+    cfg: ScaniaConfig,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """基于配置读取原始 train/test，并添加 target 列。"""
+
+    train_df, test_df = load_raw_data_from_config(cfg)
+    train_df = map_target_from_config(train_df, cfg)
+    test_df = map_target_from_config(test_df, cfg)
+    return train_df, test_df

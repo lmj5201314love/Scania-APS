@@ -158,3 +158,44 @@ Day 3 SQL 可以复核以下 Day 2 发现：
 ## Day 4 建议
 
 Day 4 建议进入 baseline 建模准备阶段：在不使用测试集拟合任何规则的前提下，设计训练集内部验证方案，建立简单 baseline，并用 recall、F2、PR-AUC 和业务成本意识来评估模型方向。Day 4 开始前仍应避免直接删除高缺失字段或做未经验证的复杂特征工程。
+
+# Day 4 baseline 建模总结
+
+## Day 4 目标
+
+Day 4 的目标是跑通第一版 baseline 建模闭环：统一使用 `config/config.yaml` 读取路径、标签映射、缺失值 token、业务成本和默认模型参数；在不修改原始数据、不重新切分 train/test、不使用测试集拟合处理规则的前提下，完成基础缺失处理、baseline 训练、成本敏感指标计算和预测结果输出。
+
+## 使用的缺失处理策略
+
+本阶段只比较两种基础策略：
+
+- `median_all`：保留全部 170 个特征，只使用训练集拟合中位数填充器，再应用到测试集。
+- `drop_high_missing_median`：只基于训练集缺失率识别缺失率大于等于 80% 的字段，删除 2 个高缺失字段后，再使用训练集拟合中位数填充器并应用到测试集。
+
+Day 4 没有进行复杂特征工程，也没有使用测试集决定缺失处理规则。
+
+## 使用的 baseline 模型
+
+本阶段运行了两类 baseline：
+
+- `dummy_prior`：只学习训练集标签先验分布，用作类别不平衡问题的最低参照。
+- `logistic_regression_balanced`：使用 `class_weight="balanced"` 的 Logistic Regression，并在模型流程中加入标准化处理。
+
+## 默认阈值下的主要结果
+
+以下结果来自 `outputs/metrics/day4_baseline_metrics.csv`，默认阈值为 `0.5`，业务成本为 `FP=10`、`FN=500`。
+
+| model_name | strategy | precision | recall | F2 | PR-AUC | FP | FN | total_cost |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| dummy_prior | median_all | 0.0000 | 0.0000 | 0.0000 | 0.0234 | 0 | 375 | 187500 |
+| logistic_regression_balanced | median_all | 0.4819 | 0.9227 | 0.7800 | 0.7982 | 372 | 29 | 18220 |
+| dummy_prior | drop_high_missing_median | 0.0000 | 0.0000 | 0.0000 | 0.0234 | 0 | 375 | 187500 |
+| logistic_regression_balanced | drop_high_missing_median | 0.4860 | 0.9280 | 0.7852 | 0.7994 | 368 | 27 | 17180 |
+
+结果说明：Dummy baseline 在默认阈值下没有识别出任何正类样本，漏报全部 375 个 APS 故障样本，总成本达到 187,500。这再次说明该项目不能以 accuracy 作为核心指标，因为多数类预测在业务上会造成严重漏报。
+
+Logistic Regression baseline 明显降低了漏报数量和总业务成本。其中 `drop_high_missing_median` 策略在当前 baseline 下略优于 `median_all`，FN 从 29 降到 27，total cost 从 18,220 降到 17,180。这个结果只代表第一版 baseline，不代表最终最优方案。
+
+## Day 5 建议
+
+Day 5 建议在当前 cfg、数据准备和评估函数的基础上训练提升模型，例如 Random Forest 或 XGBoost 的第一版模型，并继续使用 recall、F2、PR-AUC 和 total cost 作为核心评估指标。Day 5 可以比较不同模型与当前 Logistic Regression baseline 的差异，但仍应避免复杂 GridSearch 和阈值优化；阈值成本曲线更适合放到 Day 6 单独处理。

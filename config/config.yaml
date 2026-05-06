@@ -1,6 +1,6 @@
 project:
   name: scania_aps_predictive_maintenance
-  stage: day_3_sql_data_quality_analysis
+  stage: day_4_baseline_modeling
 
 paths:
   train_raw: data/raw/aps_failure_training_set.csv
@@ -34,3 +34,8 @@ evaluation:
     - f2
     - pr_auc
     - total_cost
+
+model:
+  random_state: 42
+  default_threshold: 0.5
+  high_missing_threshold: 0.8

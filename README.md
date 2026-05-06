@@ -89,22 +89,22 @@ scania_aps_predictive_maintenance/
 
 ## 当前阶段
 
-当前已完成 Day 1-2，Day 3 正在进行 SQL 数据质量分析支持。
+当前已完成 Day 1 项目初始化、Day 2 数据质量与缺失分析、Day 3 SQL 支撑与缺失策略设计，并已进入 Day 4 baseline 建模阶段，第一版 baseline 已跑通。
 
-Day 3 的重点是用 MySQL / SQL 复核 Day 2 的数据规模、标签分布、缺失值结构和基础数据质量发现，不进行模型训练、调参、缺失值填充或阈值优化。
+Day 4 的重点是建立第一版 baseline，比较基础缺失处理策略，并用 precision、recall、F2、PR-AUC 和 total cost 输出成本敏感评估结果。本阶段不做 XGBoost、不做 GridSearch、不做阈值优化，也不把 accuracy 作为核心目标。
 
 ## 阶段性进展
 
 - Day 1：项目初始化与业务理解。
 - Day 2：基础数据质量与缺失值分析。
 - Day 3：SQL 数据质量分析支持。
+- Day 4：baseline 建模与成本敏感指标验证。
 
-`outputs/` 下的 CSV 表格和 PNG 图表是本地运行产物，用于分析和报告整理，默认不提交到 GitHub。
+`outputs/` 下的 CSV 表格、PNG 图表、模型指标和预测结果是本地运行产物，用于分析和报告整理，默认不提交到 GitHub。
 
 ## 后续计划
 
-- Day 3：补充 SQL 数据质量分析，形成可复核的数据分析脚本。
-- Day 4：建立 baseline 模型，明确不平衡分类的初始评估方式。
-- Day 5：训练提升模型，并比较不同评估指标。
+- Day 4：跑通 baseline 模型闭环，比较 `median_all` 与 `drop_high_missing_median` 两种基础缺失处理策略。
+- Day 5：训练提升模型，并比较不同模型在 recall、F2、PR-AUC 和 total cost 上的表现。
 - Day 6：进行阈值优化和成本敏感评估。
 - Day 7：整理项目报告、风险分层建议和简历表述。

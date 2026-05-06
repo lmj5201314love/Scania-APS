@@ -1,0 +1,5 @@
+﻿model_name,strategy,threshold,precision,recall,f1,f2,average_precision,tn,fp,fn,tp,false_positive_cost,false_negative_cost,total_cost,dataset,n_features,n_dropped_features
+dummy_prior,median_all,0.5,0.0,0.0,0.0,0.0,0.0234375,15625,0,375,0,10,500,187500,test,170,0
+logistic_regression_balanced,median_all,0.5,0.4818941504178273,0.9226666666666666,0.6331198536139067,0.7799819657348963,0.7981958109207741,15253,372,29,346,10,500,18220,test,170,0
+dummy_prior,drop_high_missing_median,0.5,0.0,0.0,0.0,0.0,0.0234375,15625,0,375,0,10,500,187500,test,168,2
+logistic_regression_balanced,drop_high_missing_median,0.5,0.4860335195530726,0.928,0.6379468377635197,0.7851985559566786,0.7993560948454541,15257,368,27,348,10,500,17180,test,168,2
