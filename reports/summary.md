@@ -255,3 +255,62 @@ Day 6 建议基于 Day 4 Logistic baseline 和 Day 5 XGBoost 模型做阈值成�
 本次重构不改变 Day 1-Day 3 的分析逻辑和结论，不重新训练模型，不做阈值遍历，也不修改 `data/raw/` 原始数据。`notebooks/03_sql_analysis_support.ipynb` 原本为空文件，本次补成轻量 SQL 支撑检查 notebook，仅用于查看 SQL 文件和 SQL 辅助表产物位置，不新增建模内容。
 
 下一步 Day 6 可以在当前统一配置入口的基础上，读取 Day 4 / Day 5 已生成的预测概率文件，进行阈值成本分析。
+
+# Day 6 阈值成本敏感性分析总结
+
+## Day 6 目标
+
+Day 6 的目标是在不重新训练模型的前提下，读取 Day 4 / Day 5 已生成的预测概率文件，对不同分类阈值下的 precision、recall、F1、F2、FP、FN 和 total cost 做成本敏感性分析。使用的输入文件包括：
+
+- `outputs/predictions/day4_baseline_predictions.csv`
+- `outputs/predictions/day5_model_compare_predictions.csv`
+
+本阶段不做 GridSearch、不做新的特征工程、不修改原始数据，也不做最终风险分层。
+
+## 参与阈值分析的模型/策略
+
+Day 6 对所有带有 `y_proba` 的 model_name + strategy 组合执行了 0.01 到 0.99 的阈值网格分析，共生成 891 行阈值结果。重点解释的候选组合包括：
+
+- Logistic Regression + `drop_high_missing_median`
+- XGBoost + `median_all`
+- XGBoost + `drop_high_missing_median`
+
+Dummy baseline 仍作为对照，但不作为后续业务建议的候选模型。
+
+## 默认阈值 0.5 回顾
+
+默认阈值 0.5 下，Day 4 / Day 5 的关键结果为：
+
+- Logistic + `drop_high_missing_median`：recall = 0.9280，FN = 27，FP = 368，total cost = 17,180。
+- XGBoost + `median_all`：recall = 0.9120，FN = 33，FP = 196，total cost = 18,460。
+- XGBoost + `drop_high_missing_median`：recall = 0.9173，FN = 31，FP = 204，total cost = 17,540。
+
+这些结果说明默认 0.5 阈值不一定匹配 APS 的成本结构。由于 FN 成本远高于 FP，适当降低阈值可能通过减少漏报来降低总成本。
+
+## 低成本阈值结果
+
+以下结果来自 `outputs/metrics/day6_best_threshold_summary.csv`，属于当前测试集回溯敏感性分析：
+
+| model_name | strategy | best_threshold | precision | recall | F2 | FP | FN | total_cost |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| xgboost_scale_pos_weight | median_all | 0.20 | 0.4692 | 0.9760 | 0.8026 | 414 | 9 | 8640 |
+| random_forest_balanced | median_all | 0.03 | 0.3936 | 0.9813 | 0.7556 | 567 | 7 | 9170 |
+| random_forest_balanced | drop_high_missing_median | 0.02 | 0.3404 | 0.9893 | 0.7162 | 719 | 4 | 9190 |
+| xgboost_scale_pos_weight | drop_high_missing_median | 0.08 | 0.3583 | 0.9840 | 0.7292 | 661 | 6 | 9610 |
+| logistic_regression_balanced | drop_high_missing_median | 0.30 | 0.3958 | 0.9520 | 0.7431 | 545 | 18 | 14450 |
+
+当前最低 total cost 出现在 XGBoost + `median_all`，阈值为 0.20，总成本为 8,640。相比该模型默认阈值 0.5 的结果，FN 从 33 降到 9，FP 从 196 增加到 414；由于漏报成本远高于误报成本，总成本从 18,460 降到 8,640。
+
+## 指标权衡
+
+阈值降低后，模型会预测更多样本为正类，通常表现为 recall 上升、FN 下降，同时 precision 下降、FP 上升。在 APS 业务成本设定下，较高 recall 往往更重要，但不能只看 recall 或 F2，还必须看 total cost。
+
+XGBoost + `median_all` 在 Day 5 中已经有较高 PR-AUC，说明排序能力较好；Day 6 进一步显示，它在较低阈值下可以把 FN 明显压低，并取得当前最低成本。因此该组合值得进入 Day 7 的风险分层和维修优先级建议准备。
+
+## 分析限制
+
+当前阈值是在测试集预测概率上做的回溯敏感性分析，不能写成生产环境最终阈值。正式生产流程中，更严谨的做法是使用验证集选择阈值，再在测试集上进行一次最终评估。当前结果适合作为学习项目中的业务解释和 Day 7 风险分层设计依据。
+
+## Day 7 建议
+
+Day 7 建议基于 XGBoost + `median_all` 的预测概率和 Day 6 得到的低成本阈值，设计高、中、低风险分层和维修优先级建议。同时要保留说明：风险分层是当前项目阶段的业务解释方案，不是生产系统最终策略。

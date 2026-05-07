@@ -116,7 +116,7 @@ def prepare_class_missing_summary(cfg: ScaniaConfig) -> pd.DataFrame:
 def main() -> None:
     """生成 SQL 辅助表导入 CSV。"""
 
-    cfg = get_config(PROJECT_ROOT / "config" / "config.yaml")
+    cfg = get_config()
     sql_support_dir = cfg.tables_dir / "sql_support"
     sql_support_dir.mkdir(parents=True, exist_ok=True)
 

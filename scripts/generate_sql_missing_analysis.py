@@ -104,7 +104,7 @@ ORDER BY feature_name, class_label;
 def main(cfg: ScaniaConfig | None = None) -> None:
     """生成 `sql/generated_missing_rate_analysis.sql`。"""
 
-    cfg = cfg or get_config(PROJECT_ROOT / "config" / "config.yaml")
+    cfg = cfg or get_config()
     output_sql = cfg.project_root / "sql" / "generated_missing_rate_analysis.sql"
     feature_names = read_feature_names(cfg.train_raw, cfg.label_column)
     output_sql.write_text(build_sql(feature_names, cfg.label_column), encoding="utf-8")

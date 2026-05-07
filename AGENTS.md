@@ -57,4 +57,4 @@ FN 代表真实 APS 故障被漏掉，业务风险高于 FP。因此本项目不
 
 ## 当前阶段优先级
 
-当前已完成 Day 1-4，Day 5 聚焦第一版提升模型对比：统一使用 `config/config.yaml` 读取路径、标签映射、缺失值 token、业务成本、默认阈值和模型参数，比较 Random Forest / XGBoost 与 Logistic baseline 的差异。本阶段不做复杂 GridSearch、不做阈值遍历、不做风险分层；成本必须继续来自 cfg，不以 accuracy 作为核心指标。
+当前已完成 Day 1-5，Day 6 聚焦阈值成本敏感性分析：只读取 Day 4 / Day 5 已生成的预测概率文件，比较不同阈值下的 precision、recall、F2、FP、FN 和 total cost。本阶段不重新训练模型、不做 GridSearch、不做新的特征工程、不做最终风险分层；成本必须继续来自 cfg，不以 accuracy 作为核心指标。Day 6 的阈值结果属于测试集回溯敏感性分析，不能写成生产环境最终阈值。

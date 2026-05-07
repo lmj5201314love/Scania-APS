@@ -24,7 +24,7 @@ from scania_aps.config import get_config
 def main() -> None:
     """基于 cfg 生成 `sql/01_create_tables.sql`。"""
 
-    cfg = get_config(PROJECT_ROOT / "config" / "config.yaml")
+    cfg = get_config()
     generate_schema(cfg)
 
 

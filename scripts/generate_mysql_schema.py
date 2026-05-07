@@ -124,7 +124,7 @@ CREATE TABLE IF NOT EXISTS `model_prediction_result` (
 def main(cfg: ScaniaConfig | None = None) -> None:
     """生成 `sql/01_create_tables.sql`。"""
 
-    cfg = cfg or get_config(PROJECT_ROOT / "config" / "config.yaml")
+    cfg = cfg or get_config()
     output_sql = cfg.project_root / "sql" / "01_create_tables.sql"
     columns = read_header(cfg.train_raw)
     output_sql.write_text(build_sql(columns, cfg.label_column), encoding="utf-8")

@@ -1,6 +1,6 @@
 project:
   name: scania_aps_predictive_maintenance
-  stage: day_5_advanced_modeling
+  stage: day_6_threshold_cost_analysis
 
 paths:
   train_raw: data/raw/aps_failure_training_set.csv
