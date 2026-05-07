@@ -1,6 +1,6 @@
 """根据 Scania APS 原始 CSV 表头生成 MySQL 建表 SQL。
 
-脚本只读取 `data/raw/aps_failure_training_set.csv` 的表头，不读取完整数据，
+脚本只读取 cfg 中配置的训练集 CSV 表头，不读取完整数据，
 不修改原始数据。生成结果写入 `sql/01_create_tables.sql`，用于 Day 3
 SQL 数据质量分析支持。
 """
@@ -8,13 +8,16 @@ SQL 数据质量分析支持。
 from __future__ import annotations
 
 import csv
+import sys
 from pathlib import Path
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-TRAIN_CSV = PROJECT_ROOT / "data" / "raw" / "aps_failure_training_set.csv"
-OUTPUT_SQL = PROJECT_ROOT / "sql" / "01_create_tables.sql"
-LABEL_COL = "class"
+SRC_DIR = PROJECT_ROOT / "src"
+if str(SRC_DIR) not in sys.path:
+    sys.path.append(str(SRC_DIR))
+
+from scania_aps.config import ScaniaConfig, get_config
 
 
 def quote_identifier(name: str) -> str:
@@ -31,19 +34,19 @@ def read_header(csv_path: Path) -> list[str]:
         return next(reader)
 
 
-def build_raw_table_sql(table_name: str, columns: list[str]) -> str:
+def build_raw_table_sql(table_name: str, columns: list[str], label_col: str) -> str:
     """生成 raw_aps_train / raw_aps_test 宽表建表语句。"""
 
-    feature_columns = [col for col in columns if col != LABEL_COL]
+    feature_columns = [col for col in columns if col != label_col]
     column_lines = [
         "  `sample_id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '导入后的行号主键',",
-        "  `class` VARCHAR(10) NULL COMMENT '原始标签：pos 表示 APS 相关故障，neg 表示非 APS 相关故障',",
+        f"  {quote_identifier(label_col)} VARCHAR(10) NULL COMMENT '原始标签：pos 表示 APS 相关故障，neg 表示非 APS 相关故障',",
     ]
     column_lines.extend(
         f"  {quote_identifier(col)} DOUBLE NULL COMMENT '匿名数值特征'," for col in feature_columns
     )
     column_lines.append("  PRIMARY KEY (`sample_id`),")
-    column_lines.append("  KEY `idx_class` (`class`)")
+    column_lines.append(f"  KEY `idx_class` ({quote_identifier(label_col)})")
 
     return f"""CREATE TABLE IF NOT EXISTS `{table_name}` (
 {chr(10).join(column_lines)}
@@ -51,23 +54,23 @@ def build_raw_table_sql(table_name: str, columns: list[str]) -> str:
 """
 
 
-def build_sql(columns: list[str]) -> str:
+def build_sql(columns: list[str], label_col: str) -> str:
     """拼接 Day 3 所需的宽表和辅助统计表 SQL。"""
 
-    feature_count = len([col for col in columns if col != LABEL_COL])
+    feature_count = len([col for col in columns if col != label_col])
     return f"""-- Day 3：Scania APS MySQL 建表脚本
 -- 本文件由 scripts/generate_mysql_schema.py 根据原始 CSV 表头生成。
 -- 只定义表结构，不导入数据，不做缺失值填充、字段删除或建模。
--- 原始数据共有 {feature_count} 个匿名数值特征，标签字段为 class。
+-- 原始数据共有 {feature_count} 个匿名数值特征，标签字段为 {label_col}。
 
 USE scania_aps_project;
 
 -- 为避免误删已导入的数据，本脚本只使用 CREATE TABLE IF NOT EXISTS。
 -- 如果确实需要重建表，请先手动备份并在本地确认后再执行删表操作。
 
-{build_raw_table_sql("raw_aps_train", columns)}
+{build_raw_table_sql("raw_aps_train", columns, label_col)}
 
-{build_raw_table_sql("raw_aps_test", columns)}
+{build_raw_table_sql("raw_aps_test", columns, label_col)}
 
 CREATE TABLE IF NOT EXISTS `dataset_overview` (
   `dataset` VARCHAR(20) NOT NULL COMMENT 'train 或 test',
@@ -118,12 +121,14 @@ CREATE TABLE IF NOT EXISTS `model_prediction_result` (
 """
 
 
-def main() -> None:
+def main(cfg: ScaniaConfig | None = None) -> None:
     """生成 `sql/01_create_tables.sql`。"""
 
-    columns = read_header(TRAIN_CSV)
-    OUTPUT_SQL.write_text(build_sql(columns), encoding="utf-8")
-    print(f"已生成 {OUTPUT_SQL}")
+    cfg = cfg or get_config(PROJECT_ROOT / "config" / "config.yaml")
+    output_sql = cfg.project_root / "sql" / "01_create_tables.sql"
+    columns = read_header(cfg.train_raw)
+    output_sql.write_text(build_sql(columns, cfg.label_column), encoding="utf-8")
+    print(f"已生成 {output_sql}")
 
 
 if __name__ == "__main__":

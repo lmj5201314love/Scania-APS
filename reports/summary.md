@@ -247,3 +247,11 @@ XGBoost 原生处理缺失值的策略暂未启用，避免 Day 5 范围过大�
 ## Day 6 建议
 
 Day 6 建议基于 Day 4 Logistic baseline 和 Day 5 XGBoost 模型做阈值成本分析：在不重新训练模型的前提下，对预测概率使用不同阈值，计算 FP、FN、recall、precision、F2 和 total cost 的变化，寻找业务成本更低且召回可接受的阈值。Day 6 的重点是阈值决策和成本曲线，不是继续做大规模模型调参。
+
+# 配置化重构小结
+
+本次小范围 refactor 已将 Day 1-Day 3 的主要 notebook 和 SQL 辅助脚本开始统一迁移到 `config/config.yaml` 与 `get_config()`。原始 train/test 路径、缺失值 token、标签列、target 映射、输出表目录和图表目录优先从 cfg 读取，减少了在早期分析代码中重复手写 `data/raw`、`outputs/tables`、`outputs/figures` 等路径。
+
+本次重构不改变 Day 1-Day 3 的分析逻辑和结论，不重新训练模型，不做阈值遍历，也不修改 `data/raw/` 原始数据。`notebooks/03_sql_analysis_support.ipynb` 原本为空文件，本次补成轻量 SQL 支撑检查 notebook，仅用于查看 SQL 文件和 SQL 辅助表产物位置，不新增建模内容。
+
+下一步 Day 6 可以在当前统一配置入口的基础上，读取 Day 4 / Day 5 已生成的预测概率文件，进行阈值成本分析。

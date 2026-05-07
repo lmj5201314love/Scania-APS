@@ -8,13 +8,16 @@
 from __future__ import annotations
 
 import csv
+import sys
 from pathlib import Path
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-TRAIN_CSV = PROJECT_ROOT / "data" / "raw" / "aps_failure_training_set.csv"
-OUTPUT_SQL = PROJECT_ROOT / "sql" / "generated_missing_rate_analysis.sql"
-LABEL_COL = "class"
+SRC_DIR = PROJECT_ROOT / "src"
+if str(SRC_DIR) not in sys.path:
+    sys.path.append(str(SRC_DIR))
+
+from scania_aps.config import ScaniaConfig, get_config
 
 
 def quote_identifier(name: str) -> str:
@@ -23,12 +26,12 @@ def quote_identifier(name: str) -> str:
     return f"`{name.replace('`', '``')}`"
 
 
-def read_feature_names(csv_path: Path) -> list[str]:
-    """只读取 CSV 表头，并排除标签列 class。"""
+def read_feature_names(csv_path: Path, label_col: str) -> list[str]:
+    """只读取 CSV 表头，并排除标签列。"""
 
     with csv_path.open("r", encoding="utf-8", newline="") as file:
         header = next(csv.reader(file))
-    return [col for col in header if col != LABEL_COL]
+    return [col for col in header if col != label_col]
 
 
 def build_overall_select(table_name: str, dataset: str, feature_name: str) -> str:
@@ -46,23 +49,24 @@ def build_overall_select(table_name: str, dataset: str, feature_name: str) -> st
 FROM `{table_name}`"""
 
 
-def build_class_select(feature_name: str) -> str:
+def build_class_select(feature_name: str, label_col: str) -> str:
     """生成训练集中某个字段按 class 分组的缺失率 SELECT。"""
 
     col = quote_identifier(feature_name)
+    label_identifier = quote_identifier(label_col)
     return f"""SELECT
   'train' AS dataset,
   'by_class' AS summary_scope,
-  `class` AS class_label,
+  {label_identifier} AS class_label,
   '{feature_name}' AS feature_name,
   SUM(CASE WHEN {col} IS NULL THEN 1 ELSE 0 END) AS missing_count,
   COUNT(*) AS total_count,
   SUM(CASE WHEN {col} IS NULL THEN 1 ELSE 0 END) / COUNT(*) AS missing_rate
 FROM `raw_aps_train`
-GROUP BY `class`"""
+GROUP BY {label_identifier}"""
 
 
-def build_sql(feature_names: list[str]) -> str:
+def build_sql(feature_names: list[str], label_col: str) -> str:
     """拼接整体缺失率和正负样本缺失率 SQL。"""
 
     overall_parts = []
@@ -70,7 +74,7 @@ def build_sql(feature_names: list[str]) -> str:
         overall_parts.append(build_overall_select("raw_aps_train", "train", feature))
         overall_parts.append(build_overall_select("raw_aps_test", "test", feature))
 
-    class_parts = [build_class_select(feature) for feature in feature_names]
+    class_parts = [build_class_select(feature, label_col) for feature in feature_names]
 
     return f"""-- Day 3：自动生成的宽表缺失率 SQL
 -- 本文件由 scripts/generate_sql_missing_analysis.py 生成。
@@ -97,12 +101,14 @@ ORDER BY feature_name, class_label;
 """
 
 
-def main() -> None:
+def main(cfg: ScaniaConfig | None = None) -> None:
     """生成 `sql/generated_missing_rate_analysis.sql`。"""
 
-    feature_names = read_feature_names(TRAIN_CSV)
-    OUTPUT_SQL.write_text(build_sql(feature_names), encoding="utf-8")
-    print(f"已生成 {OUTPUT_SQL}")
+    cfg = cfg or get_config(PROJECT_ROOT / "config" / "config.yaml")
+    output_sql = cfg.project_root / "sql" / "generated_missing_rate_analysis.sql"
+    feature_names = read_feature_names(cfg.train_raw, cfg.label_column)
+    output_sql.write_text(build_sql(feature_names, cfg.label_column), encoding="utf-8")
+    print(f"已生成 {output_sql}")
 
 
 if __name__ == "__main__":

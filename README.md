@@ -100,6 +100,7 @@ Day 5 的重点是完成第一版 Random Forest / XGBoost 提升模型对比，�
 - Day 3：SQL 数据质量分析支持。
 - Day 4：baseline 建模与成本敏感指标验证。
 - Day 5：Random Forest / XGBoost 第一版提升模型对比。
+- 配置化重构：Day 1-Day 3 的主要 notebook/scripts 已开始统一使用 `config/config.yaml` 和 `get_config()`。
 
 `outputs/` 下的 CSV 表格、PNG 图表、模型指标和预测结果是本地运行产物，用于分析和报告整理，默认不提交到 GitHub。
 
