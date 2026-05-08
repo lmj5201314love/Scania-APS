@@ -314,3 +314,81 @@ XGBoost + `median_all` 在 Day 5 中已经有较高 PR-AUC，说明排序能力�
 ## Day 7 建议
 
 Day 7 建议基于 XGBoost + `median_all` 的预测概率和 Day 6 得到的低成本阈值，设计高、中、低风险分层和维修优先级建议。同时要保留说明：风险分层是当前项目阶段的业务解释方案，不是生产系统最终策略。
+
+# Day 7 风险分层与项目交付总结
+
+## 最终候选方案
+
+Day 7 基于 Day 6 的测试集回溯阈值分析，选择以下组合作为当前项目阶段的风险分层候选方案：
+
+```text
+XGBoost + median_all + threshold 0.20
+```
+
+该方案的核心结果为：precision = 0.4692，recall = 0.9760，F2 = 0.8026，FP = 414，FN = 9，total cost = 8,640。
+
+注意：该阈值来自测试集回溯敏感性分析，不是生产环境最终阈值。
+
+## 风险分层规则
+
+风险等级基于预测概率和 Day 6 低成本阈值划分：
+
+- Critical：`y_proba >= 0.80`，建议立即检修。
+- High：`0.20 <= y_proba < 0.80`，建议优先检修。
+- Medium：`0.05 <= y_proba < 0.20`，建议观察复查。
+- Low：`y_proba < 0.05`，建议暂不处理。
+
+## 维修优先级和风险等级汇总
+
+Day 7 已生成 `outputs/tables/day7_maintenance_priority_list.csv`，包含 16,000 条测试集样本的风险等级和维修动作建议。
+
+风险等级汇总如下：
+
+| risk_level | sample_count | actual_pos_count | tp | fp | fn | tn | suggested_action |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| Critical | 411 | 324 | 324 | 87 | 0 | 0 | 立即检修 |
+| High | 369 | 42 | 42 | 327 | 0 | 0 | 优先检修 |
+| Medium | 415 | 6 | 0 | 0 | 6 | 409 | 观察复查 |
+| Low | 14805 | 3 | 0 | 0 | 3 | 14802 | 暂不处理 |
+
+Critical 和 High 合计覆盖 366 个实际 APS 故障样本，Medium 和 Low 中仍有 9 个 FN。该结果说明风险分层能有效帮助维修团队优先处理高风险车辆，但仍需保留人工复核和生产验证机制。
+
+## 成本下降结果
+
+Naive baseline 全部预测为 `neg` 时，测试集 375 个正类全部漏报，total cost = 187,500。
+
+当前候选方案 total cost = 8,640，成本下降：
+
+```text
+cost_reduction = 178,860
+cost_reduction_rate = 95.39%
+```
+
+该下降来自 FN 从 375 降到 9。虽然 FP 增加到 414，但在 FN 成本远高于 FP 的设定下，总成本显著降低。
+
+## Day 7 交付物
+
+已完成以下交付文件：
+
+- `outputs/tables/day7_maintenance_priority_list.csv`
+- `outputs/tables/day7_risk_level_summary.csv`
+- `outputs/tables/day7_business_result_summary.csv`
+- `notebooks/07_risk_level_and_business_summary.ipynb`
+- `sql/07_risk_level_analysis.sql`
+- `reports/project_report.md`
+- `reports/resume_bullets.md`
+- `reports/interview_qa.md`
+
+README 已更新为更适合简历和面试展示的项目说明，包含核心结果、成本对比、阈值优化、风险分层、Key Findings、项目局限和运行方式。
+
+## 项目当前完成度
+
+当前项目已经完成从数据理解、SQL 复核、建模、阈值成本分析到风险分层交付的完整闭环。项目仍是学习和作品集项目，不应表述为可直接上线的生产系统。
+
+## 后续可选增强方向
+
+1. 使用验证集选择阈值，再在测试集上评估，避免测试集回溯选择阈值。
+2. 引入时间戳和车辆 ID，构建真实提前预警任务。
+3. 结合维修资源容量设计 Top-K 检修策略。
+4. 增加模型解释，分析关键匿名特征和缺失模式。
+5. 将 Day 7 风险分层表导入 MySQL，构建可复核的数据分析视图。

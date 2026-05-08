@@ -1,0 +1,5 @@
+﻿risk_level,sample_count,actual_pos_count,predicted_pos_count,tp,fp,fn,tn,avg_y_proba,suggested_action
+Critical,411,324,411,324,87,0,0,0.9608863677711672,立即检修
+High,369,42,369,42,327,0,0,0.4423466533987826,优先检修
+Medium,415,6,0,0,0,6,409,0.10069451366203373,观察复查
+Low,14805,3,0,0,0,3,14802,0.003362951266586121,暂不处理

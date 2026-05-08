@@ -1,0 +1,2 @@
+﻿solution_name,threshold,precision,recall,f2,fp,fn,total_cost,baseline_total_cost,cost_reduction,cost_reduction_rate
+xgboost_scale_pos_weight_median_all_threshold_0.20,0.2,0.46923076923076923,0.976,0.8026315789473685,414,9,8640,187500,178860,0.95392
