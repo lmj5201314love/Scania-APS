@@ -1,0 +1,4 @@
+﻿comparison_item,model_name,strategy,threshold,precision,recall,f2,fp,fn,total_cost
+validation_selected_on_test,xgboost_scale_pos_weight,drop_high_missing_median,0.14,0.4369747899159664,0.9706666666666667,0.7801114444920703,469,11,10190
+day6_test_backtest_best,xgboost_scale_pos_weight,median_all,0.2,0.4692307692307692,0.976,0.8026315789473685,414,9,8640
+delta_valid_minus_day6,,,,-0.032255979314802785,-0.005333333333333301,-0.022520134455298213,55,2,1550

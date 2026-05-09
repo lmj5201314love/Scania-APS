@@ -57,4 +57,4 @@ FN 代表真实 APS 故障被漏掉，业务风险高于 FP。因此本项目不
 
 ## 当前阶段优先级
 
-当前已完成 Day 1-7，进入项目清理与后续增强准备阶段。当前重点是整理目录结构、清理空文件、补充项目结构说明、检查 SQL 成本参数说明、保持 README 和 reports 的可读性。本阶段不重新训练模型、不做 GridSearch、不做新的特征工程、不修改 raw 数据；成本必须继续来自 cfg，不以 accuracy 作为核心指标，也不能把测试集回溯阈值写成生产环境最终阈值。
+当前已完成 Day 1-7 和一轮项目清理，进入 validation-based model selection 增强阶段。当前重点是从官方 training set 中划分 train_inner / valid，在 train_inner 上训练候选模型，在 valid 上选择模型、缺失处理策略和阈值，并在 official test 上只做一次最终评估。本阶段不做 GridSearch、不做新的特征工程、不修改 raw 数据、不覆盖 Day 4-Day 7 结果；成本必须继续来自 cfg，不以 accuracy 作为核心指标，也不能把 validation 或 test 回溯结果写成生产环境最终阈值。

@@ -1,0 +1,2 @@
+﻿model_name,strategy,threshold,precision,recall,f1,f2,average_precision,tn,fp,fn,tp,false_positive_cost,false_negative_cost,total_cost,dataset,threshold_source,n_features,n_dropped_features
+xgboost_scale_pos_weight,drop_high_missing_median,0.14,0.4369747899159664,0.9706666666666667,0.6026490066225165,0.7801114444920703,0.9104626624135033,15156,469,11,364,10,500,10190,official_test,validation,168,2

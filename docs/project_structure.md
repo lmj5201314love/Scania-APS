@@ -6,14 +6,14 @@
 
 - `README.md`：面向 GitHub、简历和面试官的项目总览，重点展示业务背景、核心结果、运行方式和项目局限。
 - `AGENTS.md`：给 Codex 或后续协作者使用的项目协作规范。
-- `config/config.yaml`：项目配置的单一事实来源，包含数据路径、标签映射、缺失值 token、业务成本、评估指标和模型参数。
+- `config/config.yaml`：项目配置的单一事实来源，包含数据路径、标签映射、缺失值 token、业务成本、评估指标、模型参数和 validation 划分配置。
 - `requirements.txt`：项目基础依赖。
 - `.env.example`：MySQL 连接配置模板，不包含真实密码。
 
 ## data/
 
 - `data/raw/`：原始 Scania APS train/test CSV。该目录下文件禁止修改、覆盖、重命名或删除。
-- `data/interim/`：后续临时中间数据目录，目前主要保留目录结构。
+- `data/interim/`：中间数据目录。本轮 validation 增强会在 `data/interim/splits/` 保存 train_inner / valid 的原始索引。
 - `data/processed/`：后续可复现实验中生成的处理后数据目录，目前不作为主流程输出位置。
 
 ## notebooks/
@@ -25,6 +25,7 @@
 - `05_model_improvement.ipynb`：Day 5 Random Forest / XGBoost 提升模型对比。
 - `06_threshold_cost_analysis.ipynb`：Day 6 基于已有预测概率的阈值成本敏感性分析。
 - `07_risk_level_and_business_summary.ipynb`：Day 7 风险分层、维修优先级和业务交付总结。
+- `08_validation_model_selection.ipynb`：validation-based model selection，在 valid 上选择模型和阈值，再在 official test 上评估。
 
 Notebook 用于记录分析过程，不应堆放大量可复用函数；可复用逻辑应放入 `src/scania_aps/`。
 
@@ -33,12 +34,14 @@ Notebook 用于记录分析过程，不应堆放大量可复用函数；可复�
 - `config.py`：统一读取 `config/config.yaml`，返回项目配置对象。
 - `data/load_data.py`：读取原始 train/test，并按配置映射 target。
 - `data/clean_data.py`：baseline 和提升模型使用的基础数据准备逻辑。
+- `data/split_data.py`：从官方 training set 中划分 train_inner / valid，并保存 split indices。
 - `evaluation/cost_utils.py`：成本敏感评估函数，成本必须来自 cfg。
 - `evaluation/metrics.py`：precision、recall、F1、F2、PR-AUC 和 total cost 评估。
 - `evaluation/threshold_utils.py`：阈值网格分析和低成本阈值汇总。
 - `evaluation/risk_utils.py`：风险等级、维修建议和预测类型分类。
 - `models/train_baseline.py`：Dummy / Logistic baseline 训练和评估。
 - `models/train_advanced.py`：Random Forest / XGBoost 提升模型训练和评估。
+- `models/validation_selection.py`：在 train_inner/valid/test 流程中选择模型、策略和阈值。
 
 以下模块为后续增强预留，当前只保留说明，避免空文件造成误解：
 
@@ -53,6 +56,7 @@ Notebook 用于记录分析过程，不应堆放大量可复用函数；可复�
 - `03_train_advanced_models.py`：从项目根目录运行 Day 5 提升模型对比。
 - `04_evaluate_thresholds.py`：读取 Day 4/Day 5 预测概率，运行 Day 6 阈值成本分析。
 - `05_build_risk_tables.py`：读取 Day 6 最优阈值和 Day 5 预测概率，生成 Day 7 风险分层和维修优先级 CSV。
+- `06_validation_model_selection.py`：运行 validation-based model selection，生成 valid 阈值结果和 official test 最终评估。
 - `generate_create_tables_sql.py`：根据原始 CSV 表头生成 MySQL 建表 SQL。
 - `generate_mysql_schema.py`：生成原始宽表相关 MySQL schema。
 - `generate_sql_missing_analysis.py`：生成宽表缺失率 SQL。
@@ -76,16 +80,28 @@ SQL 中的成本变量应与 `config/config.yaml` 保持一致；正式生产版
 
 ## outputs/
 
-- `outputs/metrics/`：模型指标和阈值分析结果。
-- `outputs/predictions/`：模型预测概率和预测标签。
-- `outputs/tables/`：数据质量、SQL 辅助表、风险分层和业务汇总表。
+- `outputs/metrics/`：模型指标、阈值分析结果和 validation-based selection 结果。
+- `outputs/predictions/`：模型预测概率和预测标签，包括 validation 与 official test 的预测结果。
+- `outputs/tables/`：数据质量、SQL 辅助表、风险分层、业务汇总表和 validation split 摘要。
 - `outputs/figures/`：缺失分析和阈值分析图表。
+
+validation 增强新增的主要输出包括：
+
+- `outputs/metrics/validation_threshold_metrics.csv`
+- `outputs/metrics/validation_best_threshold_summary.csv`
+- `outputs/metrics/final_test_evaluation_from_valid_selection.csv`
+- `outputs/metrics/validation_vs_day6_backtest_compare.csv`
+- `outputs/predictions/validation_predictions.csv`
+- `outputs/predictions/final_test_predictions_from_valid_selection.csv`
+- `outputs/tables/validation_split_summary.csv`
+- `data/interim/splits/train_inner_indices.csv`
+- `data/interim/splits/valid_indices.csv`
 
 这些是本地运行产物，通常不应强行提交到 GitHub。
 
 ## reports/
 
-- `summary.md`：按 Day 记录阶段性总结。
+- `summary.md`：按 Day 和增强阶段记录阶段性总结。
 - `missing_value_strategy.md`：缺失值处理策略说明。
 - `project_report.md`：完整项目报告。
 - `resume_bullets.md`：简历项目经历表达。
@@ -95,5 +111,7 @@ SQL 中的成本变量应与 `config/config.yaml` 保持一致；正式生产版
 
 - `test_cost_utils.py`：成本敏感函数测试。
 - `test_threshold_utils.py`：阈值分析工具测试。
+- `test_split_data.py`：validation 划分工具测试。
+- `test_output_schema.py`：关键输出文件 schema 轻量检查。
 
 测试只覆盖关键业务函数，不追求过度工程化。

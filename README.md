@@ -67,6 +67,26 @@ cost_reduction_rate = 95.39%
 3. 高缺失字段不能只按缺失率机械删除，需要结合模型表现和业务成本验证。
 4. accuracy 不适合作为核心指标。类别极不平衡场景下，全预测多数类也可能看起来准确，但业务上会漏掉关键故障样本。
 
+## 严谨性增强：Validation-based 阈值选择
+
+原 Day 6 的阈值成本分析是在官方 test 预测概率上做回溯敏感性分析，适合解释“不同阈值会怎样影响成本”，但不适合作为严格的模型选择流程。
+
+本轮增强从官方 training set 内部划分：
+
+- `train_inner`：48,000 行，正类 800，负类 47,200。
+- `valid`：12,000 行，正类 200，负类 11,800。
+- `official test`：16,000 行，只用于最终评估。
+
+validation 流程只在 `valid` 上选择模型、缺失处理策略和阈值，official test 不参与选择。
+
+| 选择方式 | 模型 | 缺失策略 | 阈值 | Precision | Recall | F2 | FP | FN | Total Cost |
+|---|---|---|---:|---:|---:|---:|---:|---:|---:|
+| valid 选择后 test 评估 | XGBoost | drop_high_missing_median | 0.14 | 0.4370 | 0.9707 | 0.7801 | 469 | 11 | 10190 |
+| Day 6 test 回溯最优 | XGBoost | median_all | 0.20 | 0.4692 | 0.9760 | 0.8026 | 414 | 9 | 8640 |
+| 差异 | - | - | - | -0.0323 | -0.0053 | -0.0225 | +55 | +2 | +1550 |
+
+结果说明：valid-based 流程下 official test 成本从 Day 6 回溯最优的 `8640` 上升到 `10190`，说明原 test 回溯阈值存在一定乐观偏差；但 XGBoost 仍然保持高 recall 和较低 total cost，策略整体没有失效。
+
 ## 项目阶段
 
 - Day 1：项目初始化与业务理解。
@@ -77,6 +97,7 @@ cost_reduction_rate = 95.39%
 - Day 6：阈值成本敏感性分析。
 - Day 7：风险分层、维修优先级建议和项目交付整理。
 - Cleanup：项目结构清理、空文件处理、SQL 成本说明和结构文档补充。
+- Enhancement 1：Validation-based model selection，在 valid 上选择模型和阈值，再在 official test 上评估。
 
 ## 技术栈
 
@@ -118,9 +139,17 @@ python scripts/04_evaluate_thresholds.py
 python scripts/05_build_risk_tables.py
 ```
 
+运行 validation-based model selection：
+
+```powershell
+python scripts/06_validation_model_selection.py
+```
+
 主要输出：
 
 - `outputs/metrics/day6_best_threshold_summary.csv`
+- `outputs/metrics/final_test_evaluation_from_valid_selection.csv`
+- `outputs/metrics/validation_vs_day6_backtest_compare.csv`
 - `outputs/tables/day7_maintenance_priority_list.csv`
 - `outputs/tables/day7_risk_level_summary.csv`
 - `outputs/tables/day7_business_result_summary.csv`
@@ -143,11 +172,10 @@ docs/project_structure.md
 
 ## 后续增强方向
 
-1. 增加验证集机制：在官方 train 内部划分 train/valid，用 valid 选择模型、策略和阈值，官方 test 只做最终评估。
-2. 做缺失值策略和特征工程消融实验：`drop_50_missing_median`、`median_with_indicator`、`xgb_native_missing`、低方差过滤、高相关过滤和 L1 选择。
-3. 做轻量级 XGBoost 调参，但避免把项目变成纯调参项目。
-4. 深化 SQL 业务分析，例如 Top-K 检修容量、不同风险等级实际故障率和维修工作量评估。
-5. 补充模型解释，例如特征重要性和 SHAP，但不虚构匿名特征的物理含义。
+1. 做缺失值策略和特征工程消融实验：`drop_50_missing_median`、`median_with_indicator`、`xgb_native_missing`、低方差过滤、高相关过滤和 L1 选择。
+2. 做轻量级 XGBoost 调参，但避免把项目变成纯调参项目。
+3. 深化 SQL 业务分析，例如 Top-K 检修容量、不同风险等级实际故障率和维修工作量评估。
+4. 补充模型解释，例如特征重要性和 SHAP，但不虚构匿名特征的物理含义。
 
 ## 简历表达建议
 

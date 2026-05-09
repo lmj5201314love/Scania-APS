@@ -447,3 +447,94 @@ README 已更新为更适合简历和面试展示的项目说明，包含核心�
 ## 后续建议
 
 下一轮增强前，建议先基于 `docs/project_structure.md` 检查新增文件是否有明确职责。后续优先做验证集机制，再进入缺失值和特征工程消融实验。
+
+# Enhancement 1 Validation-based Model Selection 总结
+
+## 增强目标
+
+Day 6 / Day 7 的低成本阈值来自 official test 上的回溯敏感性分析。该结果适合解释阈值和业务成本之间的关系，但方法论上偏乐观，因为 test 同时参与了阈值选择和结果评估。
+
+本轮增强引入 validation set 机制：从官方 training set 中划分 `train_inner` 和 `valid`，在 `train_inner` 上训练候选模型，在 `valid` 上选择模型、缺失处理策略和阈值，最后在 official test 上只做一次最终评估。
+
+## 数据划分
+
+使用 `config/config.yaml` 中的 validation 配置：
+
+- `valid_size = 0.2`
+- `stratify = true`
+- `random_state = 42`
+
+划分结果如下：
+
+| dataset | row_count | pos_count | neg_count | pos_rate |
+|---|---:|---:|---:|---:|
+| official_train | 60000 | 1000 | 59000 | 0.0167 |
+| train_inner | 48000 | 800 | 47200 | 0.0167 |
+| valid | 12000 | 200 | 11800 | 0.0167 |
+
+划分索引已保存到：
+
+- `data/interim/splits/train_inner_indices.csv`
+- `data/interim/splits/valid_indices.csv`
+
+## valid 上的模型和阈值选择
+
+本轮只比较受控候选项，不做 GridSearch 和新特征工程：
+
+- 模型：`logistic_regression_balanced`、`xgboost_scale_pos_weight`
+- 缺失策略：`median_all`、`drop_high_missing_median`
+
+valid 上按 total cost 选择出的最佳组合为：
+
+```text
+XGBoost + drop_high_missing_median + threshold 0.14
+```
+
+valid 结果：
+
+- precision = 0.3316
+- recall = 0.9750
+- F2 = 0.7025
+- FP = 393
+- FN = 5
+- total_cost = 6,430
+
+## official test 最终评估
+
+使用 valid 选择出的模型、策略和阈值，在 official test 上评估一次，结果为：
+
+- model = `xgboost_scale_pos_weight`
+- strategy = `drop_high_missing_median`
+- threshold = 0.14
+- precision = 0.4370
+- recall = 0.9707
+- F2 = 0.7801
+- FP = 469
+- FN = 11
+- total_cost = 10,190
+
+## 与 Day 6 test 回溯最优对比
+
+| 方案 | 模型 | 策略 | 阈值 | Precision | Recall | F2 | FP | FN | Total Cost |
+|---|---|---|---:|---:|---:|---:|---:|---:|---:|
+| valid 选择后 test 评估 | XGBoost | drop_high_missing_median | 0.14 | 0.4370 | 0.9707 | 0.7801 | 469 | 11 | 10190 |
+| Day 6 test 回溯最优 | XGBoost | median_all | 0.20 | 0.4692 | 0.9760 | 0.8026 | 414 | 9 | 8640 |
+| 差异 | - | - | - | -0.0323 | -0.0053 | -0.0225 | +55 | +2 | +1550 |
+
+结论：Day 6 的 test 回溯最优结果确实存在一定乐观偏差。validation-based 流程下，official test total cost 上升 1,550，FN 增加 2，FP 增加 55。但整体仍保持高 recall 和明显低于 naive baseline 的 total cost，说明 XGBoost 方向是稳定的。
+
+## 本轮输出文件
+
+- `outputs/metrics/validation_threshold_metrics.csv`
+- `outputs/metrics/validation_best_threshold_summary.csv`
+- `outputs/metrics/final_test_evaluation_from_valid_selection.csv`
+- `outputs/metrics/validation_vs_day6_backtest_compare.csv`
+- `outputs/predictions/validation_predictions.csv`
+- `outputs/predictions/final_test_predictions_from_valid_selection.csv`
+- `outputs/tables/validation_split_summary.csv`
+- `data/interim/splits/train_inner_indices.csv`
+- `data/interim/splits/valid_indices.csv`
+
+## 下一步建议
+
+下一轮建议进入缺失值和特征工程消融实验，但继续沿用 validation-based 流程：所有策略、模型和阈值选择都在 valid 上完成，official test 只用于最终评估。

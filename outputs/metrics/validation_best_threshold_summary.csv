@@ -1,0 +1,5 @@
+﻿selection_rank,model_name,strategy,best_threshold,precision,recall,f1,f2,fp,fn,total_cost,average_precision,selection_dataset
+1,xgboost_scale_pos_weight,drop_high_missing_median,0.14,0.33163265306122447,0.975,0.4949238578680203,0.702449567723343,393,5,6430,0.8672027424157809,valid
+2,xgboost_scale_pos_weight,median_all,0.16,0.3592592592592593,0.97,0.5243243243243243,0.7238805970149254,346,6,6460,0.8672391835035448,valid
+3,logistic_regression_balanced,drop_high_missing_median,0.31,0.2961783439490446,0.93,0.4492753623188406,0.6512605042016807,442,14,11420,0.7253431677535397,valid
+4,logistic_regression_balanced,median_all,0.36,0.3125,0.925,0.4671717171717172,0.6645114942528736,407,15,11570,0.7220925037400098,valid

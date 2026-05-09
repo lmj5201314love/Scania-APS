@@ -1,6 +1,6 @@
 """项目配置读取工具。
 
-统一从 config/config.yaml 读取路径、标签、缺失值 token、业务成本和评估指标。
+统一从 config/config.yaml 读取路径、标签、缺失值 token、业务成本、评估指标和模型参数。
 """
 
 from __future__ import annotations
@@ -66,6 +66,8 @@ class ScaniaConfig:
     random_state: int
     default_threshold: float
     high_missing_threshold: float
+    validation_valid_size: float
+    validation_stratify: bool
     advanced_models: dict[str, Any]
 
 
@@ -92,7 +94,15 @@ def _validate_config(raw_config: dict[str, Any], project_root: Path) -> None:
 
     _require_sections(
         raw_config,
-        ["paths", "data", "business_cost", "evaluation", "model", "advanced_models"],
+        [
+            "paths",
+            "data",
+            "business_cost",
+            "evaluation",
+            "model",
+            "validation",
+            "advanced_models",
+        ],
     )
 
     train_raw = _resolve_project_path(project_root, raw_config["paths"]["train_raw"])
@@ -115,6 +125,10 @@ def _validate_config(raw_config: dict[str, Any], project_root: Path) -> None:
     if positive_label not in target_mapping or negative_label not in target_mapping:
         raise ValueError("target_mapping 必须包含 positive_label 和 negative_label。")
 
+    valid_size = raw_config["validation"]["valid_size"]
+    if not isinstance(valid_size, (int, float)) or not 0 < float(valid_size) < 1:
+        raise ValueError("validation.valid_size 必须是 0 到 1 之间的数值。")
+
     advanced_models = raw_config["advanced_models"]
     if "random_forest" not in advanced_models or "xgboost" not in advanced_models:
         raise ValueError("advanced_models 必须包含 random_forest 和 xgboost 配置。")
@@ -135,7 +149,10 @@ def get_config(config_path: str | Path | None = None) -> ScaniaConfig:
         processed_dir=_resolve_project_path(project_root, raw_config["paths"]["processed_dir"]),
         figures_dir=_resolve_project_path(project_root, raw_config["paths"]["figures_dir"]),
         metrics_dir=_resolve_project_path(project_root, raw_config["paths"]["metrics_dir"]),
-        predictions_dir=_resolve_project_path(project_root, raw_config["paths"]["predictions_dir"]),
+        predictions_dir=_resolve_project_path(
+            project_root,
+            raw_config["paths"]["predictions_dir"],
+        ),
         tables_dir=_resolve_project_path(project_root, raw_config["paths"]["tables_dir"]),
         reports_dir=_resolve_project_path(project_root, raw_config["paths"]["reports_dir"]),
         label_column=raw_config["data"]["label_column"],
@@ -149,5 +166,7 @@ def get_config(config_path: str | Path | None = None) -> ScaniaConfig:
         random_state=raw_config["model"]["random_state"],
         default_threshold=raw_config["model"]["default_threshold"],
         high_missing_threshold=raw_config["model"]["high_missing_threshold"],
+        validation_valid_size=float(raw_config["validation"]["valid_size"]),
+        validation_stratify=bool(raw_config["validation"]["stratify"]),
         advanced_models=raw_config["advanced_models"],
     )
