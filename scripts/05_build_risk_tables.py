@@ -1,7 +1,5 @@
 """生成 Day 7 风险分层和维修优先级 CSV。
 
-脚本名称保留 MySQL 导出含义，但当前阶段只生成可导入 MySQL 的 CSV，
-不连接数据库，也不写入真实密码。
 """
 
 from __future__ import annotations

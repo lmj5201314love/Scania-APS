@@ -11,3 +11,4 @@ pymysql
 python-dotenv
 pyyaml
 joblib
+pytest

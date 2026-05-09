@@ -1,14 +1,20 @@
 -- Day 7：风险分层与维修优先级 SQL 复核脚本
 -- 假设 outputs/tables/day7_maintenance_priority_list.csv
--- 已导入 MySQL 表 model_prediction_result。
+-- 已导入 MySQL 表 model_prediction_result_day7。
 --
 -- 建议字段：
 -- sample_id, model_name, strategy, y_true, y_proba, threshold, y_pred,
 -- prediction_type, risk_level, suggested_action
 --
 -- 本脚本只写分析查询，不负责导入数据，不写真实数据库密码。
+-- 如果你导入时使用了旧表名 model_prediction_result，请把下方表名统一替换。
 
 USE scania_aps_project;
+
+-- SQL 无法直接读取 config/config.yaml。
+-- 运行前请确认这里的会话变量与 cfg.business_cost 保持一致。
+SET @fp_cost := 10;
+SET @fn_cost := 500;
 
 -- 1. 各风险等级车辆数量：用于估算维修工作量。
 SELECT
@@ -84,11 +90,7 @@ GROUP BY suggested_action
 ORDER BY FIELD(suggested_action, '立即检修', '优先检修', '观察复查', '暂不处理');
 
 -- 8. 当前方案与 naive baseline 的 total cost 对比。
--- 成本参数与 config/config.yaml 保持一致：FP=10，FN=500。
-WITH cost_params AS (
-  SELECT 10 AS fp_cost, 500 AS fn_cost
-),
-current_solution AS (
+WITH current_solution AS (
   SELECT
     SUM(CASE WHEN prediction_type = 'FP' THEN 1 ELSE 0 END) AS fp,
     SUM(CASE WHEN prediction_type = 'FN' THEN 1 ELSE 0 END) AS fn
@@ -104,24 +106,19 @@ SELECT
   'current_threshold_solution' AS solution_name,
   current_solution.fp,
   current_solution.fn,
-  current_solution.fp * cost_params.fp_cost + current_solution.fn * cost_params.fn_cost AS total_cost
+  current_solution.fp * @fp_cost + current_solution.fn * @fn_cost AS total_cost
 FROM current_solution
-CROSS JOIN cost_params
 UNION ALL
 SELECT
   'naive_all_negative' AS solution_name,
   naive_baseline.fp,
   naive_baseline.fn,
-  naive_baseline.fp * cost_params.fp_cost + naive_baseline.fn * cost_params.fn_cost AS total_cost
-FROM naive_baseline
-CROSS JOIN cost_params;
+  naive_baseline.fp * @fp_cost + naive_baseline.fn * @fn_cost AS total_cost
+FROM naive_baseline;
 
 -- 9. 当前方案与默认阈值 0.5 的 total cost 对比。
 -- 这里使用 y_proba 在 SQL 中回放默认阈值，不需要重新导入默认预测表。
-WITH cost_params AS (
-  SELECT 10 AS fp_cost, 500 AS fn_cost
-),
-current_solution AS (
+WITH current_solution AS (
   SELECT
     SUM(CASE WHEN prediction_type = 'FP' THEN 1 ELSE 0 END) AS fp,
     SUM(CASE WHEN prediction_type = 'FN' THEN 1 ELSE 0 END) AS fn
@@ -137,14 +134,12 @@ SELECT
   'current_threshold_solution' AS solution_name,
   current_solution.fp,
   current_solution.fn,
-  current_solution.fp * cost_params.fp_cost + current_solution.fn * cost_params.fn_cost AS total_cost
+  current_solution.fp * @fp_cost + current_solution.fn * @fn_cost AS total_cost
 FROM current_solution
-CROSS JOIN cost_params
 UNION ALL
 SELECT
   'default_threshold_0_5' AS solution_name,
   default_threshold.fp,
   default_threshold.fn,
-  default_threshold.fp * cost_params.fp_cost + default_threshold.fn * cost_params.fn_cost AS total_cost
-FROM default_threshold
-CROSS JOIN cost_params;
+  default_threshold.fp * @fp_cost + default_threshold.fn * @fn_cost AS total_cost
+FROM default_threshold;

@@ -85,7 +85,8 @@ Day 2 读取了官方提供的原始训练集和测试集，读取方式为 `pd.
 
 训练集和测试集中，缺失率大于等于 50% 的字段均为 8 个；缺失率大于等于 80% 的字段均为 2 个；没有发现缺失率等于 100% 的字段。
 
-高缺失字段主要包括：`br_000`、`bq_000`、`bp_000`、`bo_000`、`ab_000`、`cr_000`、`bn_000`、`bm_000`。Day 2 只识别这些字段，不做删除或填充。后续需要结合模型表现、业务解释和数据泄漏风险再决定处理策略。
+高缺失字段主要包括：`br_000`、`bq_000`、`bp_000`、`bo_000`、`ab_000`、`cr_000`、`bn_000`、`bm_000`。
+Day 2只识别这些字段，不做删除或填充。后续需要结合模型表现、业务解释和数据泄漏风险再决定处理策略。
 
 ## train/test 缺失模式对比
 
@@ -108,7 +109,8 @@ train/test 缺失率差异整体很小。差异最大的字段为 `cl_000` 和 `
 
 ## Day 3 建议
 
-Day 3 建议进入 SQL 数据质量分析支持阶段：基于 Day 2 的发现，编写 SQL 脚本复核数据规模、标签分布、缺失字段统计、高缺失字段清单和基础质量检查。SQL 阶段仍不做建模、不做填充、不做阈值优化，重点是让数据质量分析可以被数据库查询复现。
+Day 3 建议进入 SQL 数据质量分析支持阶段：基于 Day 2 的发现，编写 SQL 脚本复核数据规模、标签分布、缺失字段统计、高缺失字段清单和基础质量检查
+SQL阶段仍不做建模、不做填充、不做阈值优化，重点是让数据质量分析可以被数据库查询复现。
 
 # Day 3 SQL 数据质量分析支持总结
 
@@ -121,7 +123,9 @@ Day 3 的目标是让 Day 2 的核心数据质量分析可以被 MySQL / SQL 查
 已完善以下 SQL 文件：
 
 - `sql/00_init_database.sql`：创建并切换到 `scania_aps_project` 数据库，字符集使用 `utf8mb4`。
-- `sql/01_create_tables.sql`：根据原始 CSV 表头自动生成 raw 宽表，并创建 `dataset_overview`、`label_distribution`、`feature_missing_summary` 和后续预留的 `model_prediction_result` 表。
+- `sql/01_create_tables.sql`：根据原始 CSV 表头自动生成 raw 宽表，并创建
+  `dataset_overview`、`label_distribution`、`feature_missing_summary` 和后续预留的
+  `model_prediction_result` 表。
 - `sql/02_import_check.sql`：提供导入后行数、标签取值、标签分布、`class` 空值和 `sample_id` 唯一性检查。
 - `sql/03_data_quality_analysis.sql`：提供数据集概览、标签分布、`class` 空值、target 映射和主键完整性检查。
 - `sql/04_label_and_missing_analysis.sql`：提供标签分布、缺失率分层、高缺失字段、train/test 缺失率差异和 pos/neg 缺失率差异分析查询。
@@ -149,7 +153,8 @@ Day 3 SQL 可以复核以下 Day 2 发现：
 
 新增 `scripts/generate_sql_missing_analysis.py`，用于生成 `sql/generated_missing_rate_analysis.sql`，复核宽表逐字段缺失率和 pos/neg 缺失模式差异。
 
-新增 `scripts/prepare_sql_support_tables.py`，用于将 Day 2 的输出表整理成适合导入 MySQL 辅助表的 CSV，包括 `dataset_overview`、`label_distribution` 和 `feature_missing_summary`。
+新增 `scripts/prepare_sql_support_tables.py`，用于将 Day 2 的输出表整理成适合导入 MySQL 辅助表的 CSV，包括
+`dataset_overview`、`label_distribution` 和 `feature_missing_summary`。
 
 新增 `docs/mysql_import_guide.md`，说明如何创建数据库、创建表、导入 CSV、处理 `"na"` 缺失值，以及导入后应该运行哪些 SQL 检查脚本。
 
@@ -157,7 +162,8 @@ Day 3 SQL 可以复核以下 Day 2 发现：
 
 ## Day 4 建议
 
-Day 4 建议进入 baseline 建模准备阶段：在不使用测试集拟合任何规则的前提下，设计训练集内部验证方案，建立简单 baseline，并用 recall、F2、PR-AUC 和业务成本意识来评估模型方向。Day 4 开始前仍应避免直接删除高缺失字段或做未经验证的复杂特征工程。
+Day 4 建议进入 baseline 建模准备阶段：在不使用测试集拟合任何规则的前提下，设计训练集内部验证方案，建立简单 baseline，并用 recall、F2、PR-AUC
+和业务成本意识来评估模型方向。Day 4 开始前仍应避免直接删除高缺失字段或做未经验证的复杂特征工程。
 
 # Day 4 baseline 建模总结
 
@@ -194,17 +200,22 @@ Day 4 没有进行复杂特征工程，也没有使用测试集决定缺失处�
 
 结果说明：Dummy baseline 在默认阈值下没有识别出任何正类样本，漏报全部 375 个 APS 故障样本，总成本达到 187,500。这再次说明该项目不能以 accuracy 作为核心指标，因为多数类预测在业务上会造成严重漏报。
 
-Logistic Regression baseline 明显降低了漏报数量和总业务成本。其中 `drop_high_missing_median` 策略在当前 baseline 下略优于 `median_all`，FN 从 29 降到 27，total cost 从 18,220 降到 17,180。这个结果只代表第一版 baseline，不代表最终最优方案。
+Logistic Regression baseline 明显降低了漏报数量和总业务成本。其中 `drop_high_missing_median` 策略在当前 baseline 下略优于
+`median_all`，FN 从 29 降到 27，total cost 从 18,220 降到 17,180。这个结果只代表第一版 baseline，不代表最终最优方案。
 
 ## Day 5 建议
 
-Day 5 建议在当前 cfg、数据准备和评估函数的基础上训练提升模型，例如 Random Forest 或 XGBoost 的第一版模型，并继续使用 recall、F2、PR-AUC 和 total cost 作为核心评估指标。Day 5 可以比较不同模型与当前 Logistic Regression baseline 的差异，但仍应避免复杂 GridSearch 和阈值优化；阈值成本曲线更适合放到 Day 6 单独处理。
+Day 5 建议在当前 cfg、数据准备和评估函数的基础上训练提升模型，例如 Random Forest 或 XGBoost 的第一版模型，并继续使用 recall、F2、PR-AUC 和
+total cost 作为核心评估指标。Day 5 可以比较不同模型与当前 Logistic Regression baseline 的差异，但仍应避免复杂 GridSearch
+和阈值优化；阈值成本曲线更适合放到 Day 6 单独处理。
 
 # Day 5 提升模型对比总结
 
 ## Day 5 目标
 
-Day 5 的目标是在 Day 4 baseline 基础上训练第一版提升模型，比较 Random Forest / XGBoost 与 Logistic Regression baseline 的差异。本阶段继续统一使用 `config/config.yaml` 读取路径、标签映射、缺失值 token、默认阈值、模型参数和业务成本；不修改原始数据，不合并 train/test 重新划分，不在测试集上拟合任何处理规则。
+Day 5 的目标是在 Day 4 baseline 基础上训练第一版提升模型，比较 Random Forest / XGBoost 与 Logistic Regression
+baseline 的差异。本阶段继续统一使用 `config/config.yaml` 读取路径、标签映射、缺失值 token、默认阈值、模型参数和业务成本；不修改原始数据，不合并
+train/test 重新划分，不在测试集上拟合任何处理规则。
 
 ## 使用的模型和缺失处理策略
 
@@ -233,7 +244,9 @@ XGBoost 原生处理缺失值的策略暂未启用，避免 Day 5 范围过大�
 | xgboost_scale_pos_weight | drop_high_missing_median | 0.6277 | 0.9173 | 0.8398 | 0.9091 | 204 | 31 | 17540 |
 | random_forest_balanced | median_with_indicator | 0.9485 | 0.5893 | 0.6376 | 0.8910 | 12 | 154 | 77120 |
 
-与 Day 4 最优 Logistic baseline 相比，XGBoost 的 PR-AUC 和 F2 更高，但在默认阈值 `0.5` 下 total cost 仍略高。Day 4 最优 Logistic + `drop_high_missing_median` 的 total cost 为 17,180；Day 5 最低 total cost 为 XGBoost + `drop_high_missing_median` 的 17,540。
+与 Day 4 最优 Logistic baseline 相比，XGBoost 的 PR-AUC 和 F2 更高，但在默认阈值 `0.5` 下 total cost 仍略高。Day 4 最优
+Logistic + `drop_high_missing_median` 的 total cost 为 17,180；Day 5 最低 total cost 为 XGBoost +
+`drop_high_missing_median` 的 17,540。
 
 仅在 Day 5 提升模型内部比较：
 
@@ -242,17 +255,25 @@ XGBoost 原生处理缺失值的策略暂未启用，避免 Day 5 范围过大�
 - PR-AUC 最高：XGBoost + `median_all`，PR-AUC 为 0.9113。
 - total cost 最低：XGBoost + `drop_high_missing_median`，total cost 为 17,540。
 
-如果把 Day 4 Logistic baseline 一起纳入比较，Logistic + `drop_high_missing_median` 在默认阈值下的 recall 为 0.9280、total cost 为 17,180，仍然略优于当前 XGBoost 的默认阈值结果；但 XGBoost 的 F2 和 PR-AUC 更高，说明它的概率排序能力更值得进入 Day 6 阈值成本分析。Random Forest 的 precision 很高，但 recall 明显低于 Logistic 和 XGBoost，因此在 FN 成本远高于 FP 的业务设定下，默认阈值下的总成本较高。当前还不能写成最终最优模型。
+如果把 Day 4 Logistic baseline 一起纳入比较，Logistic + `drop_high_missing_median` 在默认阈值下的 recall 为
+0.9280、total cost 为 17,180，仍然略优于当前 XGBoost 的默认阈值结果；但 XGBoost 的 F2 和 PR-AUC 更高，说明它的概率排序能力更值得进入
+Day 6 阈值成本分析。Random Forest 的 precision 很高，但 recall 明显低于 Logistic 和 XGBoost，因此在 FN 成本远高于 FP
+的业务设定下，默认阈值下的总成本较高。当前还不能写成最终最优模型。
 
 ## Day 6 建议
 
-Day 6 建议基于 Day 4 Logistic baseline 和 Day 5 XGBoost 模型做阈值成本分析：在不重新训练模型的前提下，对预测概率使用不同阈值，计算 FP、FN、recall、precision、F2 和 total cost 的变化，寻找业务成本更低且召回可接受的阈值。Day 6 的重点是阈值决策和成本曲线，不是继续做大规模模型调参。
+Day 6 建议基于 Day 4 Logistic baseline 和 Day 5 XGBoost 模型做阈值成本分析：在不重新训练模型的前提下，对预测概率使用不同阈值，计算
+FP、FN、recall、precision、F2 和 total cost 的变化，寻找业务成本更低且召回可接受的阈值。Day 6 的重点是阈值决策和成本曲线，不是继续做大规模模型调参。
 
 # 配置化重构小结
 
-本次小范围 refactor 已将 Day 1-Day 3 的主要 notebook 和 SQL 辅助脚本开始统一迁移到 `config/config.yaml` 与 `get_config()`。原始 train/test 路径、缺失值 token、标签列、target 映射、输出表目录和图表目录优先从 cfg 读取，减少了在早期分析代码中重复手写 `data/raw`、`outputs/tables`、`outputs/figures` 等路径。
+本次小范围 refactor 已将 Day 1-Day 3 的主要 notebook 和 SQL 辅助脚本开始统一迁移到 `config/config.yaml` 与
+`get_config()`。原始 train/test 路径、缺失值 token、标签列、target 映射、输出表目录和图表目录优先从 cfg 读取，减少了在早期分析代码中重复手写
+`data/raw`、`outputs/tables`、`outputs/figures` 等路径。
 
-本次重构不改变 Day 1-Day 3 的分析逻辑和结论，不重新训练模型，不做阈值遍历，也不修改 `data/raw/` 原始数据。`notebooks/03_sql_analysis_support.ipynb` 原本为空文件，本次补成轻量 SQL 支撑检查 notebook，仅用于查看 SQL 文件和 SQL 辅助表产物位置，不新增建模内容。
+本次重构不改变 Day 1-Day 3 的分析逻辑和结论，不重新训练模型，不做阈值遍历，也不修改 `data/raw/`
+原始数据。`notebooks/03_sql_analysis_support.ipynb` 原本为空文件，本次补成轻量 SQL 支撑检查 notebook，仅用于查看 SQL 文件和 SQL
+辅助表产物位置，不新增建模内容。
 
 下一步 Day 6 可以在当前统一配置入口的基础上，读取 Day 4 / Day 5 已生成的预测概率文件，进行阈值成本分析。
 
@@ -260,7 +281,8 @@ Day 6 建议基于 Day 4 Logistic baseline 和 Day 5 XGBoost 模型做阈值成�
 
 ## Day 6 目标
 
-Day 6 的目标是在不重新训练模型的前提下，读取 Day 4 / Day 5 已生成的预测概率文件，对不同分类阈值下的 precision、recall、F1、F2、FP、FN 和 total cost 做成本敏感性分析。使用的输入文件包括：
+Day 6 的目标是在不重新训练模型的前提下，读取 Day 4 / Day 5 已生成的预测概率文件，对不同分类阈值下的 precision、recall、F1、F2、FP、FN 和
+total cost 做成本敏感性分析。使用的输入文件包括：
 
 - `outputs/predictions/day4_baseline_predictions.csv`
 - `outputs/predictions/day5_model_compare_predictions.csv`
@@ -299,13 +321,16 @@ Dummy baseline 仍作为对照，但不作为后续业务建议的候选模型�
 | xgboost_scale_pos_weight | drop_high_missing_median | 0.08 | 0.3583 | 0.9840 | 0.7292 | 661 | 6 | 9610 |
 | logistic_regression_balanced | drop_high_missing_median | 0.30 | 0.3958 | 0.9520 | 0.7431 | 545 | 18 | 14450 |
 
-当前最低 total cost 出现在 XGBoost + `median_all`，阈值为 0.20，总成本为 8,640。相比该模型默认阈值 0.5 的结果，FN 从 33 降到 9，FP 从 196 增加到 414；由于漏报成本远高于误报成本，总成本从 18,460 降到 8,640。
+当前最低 total cost 出现在 XGBoost + `median_all`，阈值为 0.20，总成本为 8,640。相比该模型默认阈值 0.5 的结果，FN 从 33 降到 9，FP
+从 196 增加到 414；由于漏报成本远高于误报成本，总成本从 18,460 降到 8,640。
 
 ## 指标权衡
 
-阈值降低后，模型会预测更多样本为正类，通常表现为 recall 上升、FN 下降，同时 precision 下降、FP 上升。在 APS 业务成本设定下，较高 recall 往往更重要，但不能只看 recall 或 F2，还必须看 total cost。
+阈值降低后，模型会预测更多样本为正类，通常表现为 recall 上升、FN 下降，同时 precision 下降、FP 上升。在 APS 业务成本设定下，较高 recall
+往往更重要，但不能只看 recall 或 F2，还必须看 total cost。
 
-XGBoost + `median_all` 在 Day 5 中已经有较高 PR-AUC，说明排序能力较好；Day 6 进一步显示，它在较低阈值下可以把 FN 明显压低，并取得当前最低成本。因此该组合值得进入 Day 7 的风险分层和维修优先级建议准备。
+XGBoost + `median_all` 在 Day 5 中已经有较高 PR-AUC，说明排序能力较好；Day 6 进一步显示，它在较低阈值下可以把 FN
+明显压低，并取得当前最低成本。因此该组合值得进入 Day 7 的风险分层和维修优先级建议准备。
 
 ## 分析限制
 
@@ -392,3 +417,33 @@ README 已更新为更适合简历和面试展示的项目说明，包含核心�
 3. 结合维修资源容量设计 Top-K 检修策略。
 4. 增加模型解释，分析关键匿名特征和缺失模式。
 5. 将 Day 7 风险分层表导入 MySQL，构建可复核的数据分析视图。
+
+# Cleanup 项目结构清理总结
+
+## 清理目标
+
+当前项目已经完成 Day 1-7 的完整闭环，文件数量和阶段性产物较多。本次清理的目标不是新增模型，而是减少空文件和命名歧义，让项目结构更适合后续增强、简历展示和面试讲解。
+
+## 已完成事项
+
+- 已确认 `05_feature_engineering.ipynb` 重命名为 `05_model_improvement.ipynb`。
+- 已确认 `05_export_predictions_to_mysql.py` 重命名为 `05_build_risk_tables.py`。
+- 删除空的 `scripts/01_prepare_data.py`，因为当前数据读取和建模准备已经由 `src/scania_aps/data/` 与训练脚本承担。
+- 删除空的 `tests/conftest.py`，因为当前测试不需要额外 pytest 配置。
+- 补充 `tests/test_cost_utils.py` 和 `tests/test_threshold_utils.py`，覆盖成本函数和阈值工具的核心行为。
+- 补充 `docs/project_structure.md`，说明目录职责、核心脚本入口和预留模块用途。
+- 补充 `docs/data_dictionary.md`，说明 Scania APS 特征匿名化限制，避免虚构字段物理含义。
+- 为后续可能使用的空模块补充中文说明，包括 database、features、predict 和 visualization 相关模块。
+- 补全 `sql/05_business_cost_analysis.sql` 和 `sql/06_model_result_analysis.sql`，避免 SQL 目录存在空文件。
+- 整理 `sql/07_risk_level_analysis.sql`，将成本参数改为 SQL 会话变量，并说明需要与 `config/config.yaml` 保持一致。
+- 整理 README 和本 summary 的物理换行，提高 Markdown 可读性。
+
+## 保留的空文件说明
+
+`src/scania_aps/**/__init__.py` 继续保留为空文件。这些文件是 Python 包结构标记，不属于无用文件。
+
+`outputs/`、`models/` 和 `data/` 下的 `.gitkeep` 继续保留，用于在 Git 中保留空目录结构。
+
+## 后续建议
+
+下一轮增强前，建议先基于 `docs/project_structure.md` 检查新增文件是否有明确职责。后续优先做验证集机制，再进入缺失值和特征工程消融实验。

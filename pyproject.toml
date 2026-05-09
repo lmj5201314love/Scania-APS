@@ -1,0 +1,9 @@
+[project]
+name = "scania-aps-predictive-maintenance"
+version = "0.1.0"
+description = "Scania APS 预测性维护项目：数据质量分析、成本敏感建模和风险分层。"
+requires-python = ">=3.10"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
