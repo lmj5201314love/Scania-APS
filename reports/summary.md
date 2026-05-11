@@ -638,3 +638,110 @@ official test 上的关键结果如下：
 ## 下一步建议
 
 下一步可以进入轻量级调参或模型解释性分析。更推荐先做小范围 XGBoost 参数实验，并继续坚持：参数、策略和阈值只在 validation 上选择，official test 只做最终评估。如果进入模型解释，应使用特征重要性或 SHAP 解释匿名特征的相对贡献，但不能虚构传感器物理含义。
+
+# Day 10 字段级分布诊断与结构信号分析准备
+
+## Day 10 目标
+
+Day 10 不建模、不调参、不做新的特征工程实验，只做字段级分布诊断。目标是系统观察 170 个匿名数值字段的缺失率、零值率、近似零值率、偏态、长尾、pos/neg 分布差异和 train/valid/test 分布漂移，为后续结构特征设计提供依据。
+
+## 输出文件
+
+本轮已生成以下诊断表：
+
+- `outputs/metrics/day10_feature_distribution_summary.csv`
+- `outputs/metrics/day10_missing_zero_summary.csv`
+- `outputs/metrics/day10_pos_neg_distribution_diff.csv`
+- `outputs/metrics/day10_train_valid_test_drift_summary.csv`
+- `outputs/metrics/day10_top_feature_diagnostics.csv`
+
+并生成以下图表：
+
+- `outputs/figures/day10_top_skewed_features.png`
+- `outputs/figures/day10_pos_neg_missing_diff_top20.png`
+- `outputs/figures/day10_train_test_drift_top20.png`
+- `outputs/figures/day10_zero_rate_top20.png`
+
+## 高缺失现象
+
+train_inner 中高缺失字段集中在：
+
+| feature_name | missing_rate |
+|---|---:|
+| br_000 | 0.8216 |
+| bq_000 | 0.8130 |
+| bp_000 | 0.7968 |
+| bo_000 | 0.7739 |
+| ab_000 | 0.7715 |
+| cr_000 | 0.7715 |
+| bn_000 | 0.7354 |
+| bm_000 | 0.6614 |
+
+缺失率大于等于 50% 的字段有 8 个，缺失率大于等于 80% 的字段有 2 个。这说明缺失不是零散噪声，而是结构性数据问题。
+
+## 高零值现象
+
+train_inner 中高零值字段集中在：
+
+| feature_name | zero_rate |
+|---|---:|
+| as_000 | 0.9889 |
+| au_000 | 0.9883 |
+| ag_000 | 0.9858 |
+| ay_009 | 0.9800 |
+| ay_000 | 0.9796 |
+| ag_001 | 0.9767 |
+| ay_001 | 0.9701 |
+| ay_002 | 0.9696 |
+| ay_003 | 0.9681 |
+| az_009 | 0.9584 |
+
+零值率大于等于 90% 的字段有 29 个，零值率大于等于 50% 的字段有 53 个。后续可以考虑样本级 zero-count、zero-rate，以及按字段前缀聚合的零值结构特征。
+
+## 高偏态和长尾现象
+
+train_inner 中偏态绝对值最高的字段包括：
+
+| feature_name | skew | p99_to_median_ratio | max_to_p99_ratio |
+|---|---:|---:|---:|
+| cs_009 | 217.8466 | NaN | 7483832.29 |
+| cf_000 | 190.0789 | 207.0000 | 20735023.93 |
+| co_000 | 190.0789 | 694.0975 | 1545946.42 |
+| ad_000 | 190.0789 | 32.6938 | 2083861.36 |
+| dh_000 | 181.7330 | NaN | 11619.00 |
+
+这些字段显示出明显右偏和极端长尾。该现象支持继续使用中位数填充、树模型，以及后续尝试稳健缩放或截尾对照实验。对线性模型而言，这类长尾字段需要谨慎处理。
+
+## pos/neg 分布差异
+
+pos/neg 缺失率差异最大的字段包括：
+
+| feature_name | missing_rate_diff_abs |
+|---|---:|
+| br_000 | 0.7415 |
+| bq_000 | 0.7365 |
+| bp_000 | 0.7251 |
+| bo_000 | 0.7069 |
+| bn_000 | 0.6704 |
+
+这与前面缺失模式存在预测信号的结论一致。高缺失字段不能只按缺失率机械删除，需要结合缺失指示、模型表现和成本结果评估。
+
+pos/neg 数值分布差异明显的字段包括 `ah_000`、`bg_000`、`ci_000`、`bu_000`、`cq_000`、`bv_000`、`bb_000`、`an_000` 等。这些字段只能解释为匿名特征上的统计差异，不能虚构具体传感器或部件含义。
+
+## train/test 分布漂移
+
+train_inner 与 official test 的缺失率差异整体较小，最大缺失率差异约为 0.5 个百分点，Top 字段包括 `ec_00`、`cl_000`、`ed_000`、`bl_000`、`bk_000`。这说明缺失模式在 train/test 之间总体较稳定。
+
+但部分长尾字段的 p99 差异较大，例如 `eb_000`、`du_000`、`bu_000`、`bv_000`、`cq_000`、`bb_000`。这提示后续结构特征或稳健处理要关注长尾泛化风险。
+
+## 对后续结构特征设计的启发
+
+Day 10 结果支持后续进入结构特征设计，但不应直接跳到复杂模型。建议 Day 11 / Day 12 优先考虑：
+
+1. 样本级缺失计数、缺失率、零值计数、零值率。
+2. 按匿名字段前缀构建组内缺失率、零值率和分位数统计。
+3. 对高偏态字段尝试稳健变换或截尾对照。
+4. 对 pos/neg 缺失差异明显字段保留 missing indicator 方向。
+5. 对 train/test 漂移较明显字段保持谨慎，不能使用 official test 反向决定策略。
+
+所有后续结构特征仍应在 validation 流程中选择，official test 只用于最终评估。

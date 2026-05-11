@@ -27,6 +27,7 @@
 - `07_risk_level_and_business_summary.ipynb`：Day 7 风险分层、维修优先级和业务交付总结。
 - `08_validation_model_selection.ipynb`：validation-based model selection，在 valid 上选择模型和阈值，再在 official test 上评估。
 - `09_feature_ablation_experiments.ipynb`：缺失值与特征工程消融实验，对比缺失处理、缺失指示、原生缺失和基础特征筛选策略。
+- `10_distribution_and_structural_signal_analysis.ipynb`：Day 10 字段级分布诊断，分析缺失率、零值率、偏态、长尾、pos/neg 差异和 train/test 漂移。
 
 Notebook 用于记录分析过程，不应堆放大量可复用函数；可复用逻辑应放入 `src/scania_aps/`。
 
@@ -36,6 +37,7 @@ Notebook 用于记录分析过程，不应堆放大量可复用函数；可复�
 - `data/load_data.py`：读取原始 train/test，并按配置映射 target。
 - `data/clean_data.py`：baseline 和提升模型使用的基础数据准备逻辑。
 - `data/split_data.py`：从官方 training set 中划分 train_inner / valid，并保存 split indices。
+- `analysis/distribution_diagnostics.py`：字段级分布诊断工具，输出缺失、零值、偏态、长尾、pos/neg 差异和 train/valid/test 漂移统计。
 - `features/build_features.py`：缺失值与特征工程消融实验的数据处理模块，支持 median、drop_50/drop_80、缺失指示、原生缺失、低方差、高相关和 L1 特征选择等策略。
 - `evaluation/cost_utils.py`：成本敏感评估函数，成本必须来自 cfg。
 - `evaluation/metrics.py`：precision、recall、F1、F2、PR-AUC 和 total cost 评估。
@@ -60,6 +62,7 @@ Notebook 用于记录分析过程，不应堆放大量可复用函数；可复�
 - `05_build_risk_tables.py`：读取 Day 6 最优阈值和 Day 5 预测概率，生成 Day 7 风险分层和维修优先级 CSV。
 - `06_validation_model_selection.py`：运行 validation-based model selection，生成 valid 阈值结果和 official test 最终评估。
 - `07_feature_ablation_experiments.py`：运行缺失值与特征工程消融实验，输出 valid 阈值结果、official test 评估和策略元数据。
+- `08_distribution_diagnostics.py`：运行 Day 10 字段级分布诊断，生成可复用诊断表和基础图表。
 - `generate_create_tables_sql.py`：根据原始 CSV 表头生成 MySQL 建表 SQL。
 - `generate_mysql_schema.py`：生成原始宽表相关 MySQL schema。
 - `generate_sql_missing_analysis.py`：生成宽表缺失率 SQL。
@@ -108,6 +111,18 @@ validation 增强新增的主要输出包括：
 - `outputs/tables/feature_ablation_strategy_metadata.csv`
 - `outputs/tables/missing_indicator_signal_summary.csv`
 
+Day 10 字段级分布诊断新增的主要输出包括：
+
+- `outputs/metrics/day10_feature_distribution_summary.csv`
+- `outputs/metrics/day10_missing_zero_summary.csv`
+- `outputs/metrics/day10_pos_neg_distribution_diff.csv`
+- `outputs/metrics/day10_train_valid_test_drift_summary.csv`
+- `outputs/metrics/day10_top_feature_diagnostics.csv`
+- `outputs/figures/day10_top_skewed_features.png`
+- `outputs/figures/day10_pos_neg_missing_diff_top20.png`
+- `outputs/figures/day10_train_test_drift_top20.png`
+- `outputs/figures/day10_zero_rate_top20.png`
+
 这些是本地运行产物，通常不应强行提交到 GitHub。
 
 ## reports/
@@ -126,5 +141,6 @@ validation 增强新增的主要输出包括：
 - `test_output_schema.py`：关键输出文件 schema 轻量检查。
 - `test_feature_building.py`：缺失值与特征构建策略的轻量单元测试。
 - `test_feature_ablation_schema.py`：消融实验结果表 schema 测试。
+- `test_distribution_diagnostics.py`：字段级分布诊断函数测试。
 
 测试只覆盖关键业务函数，不追求过度工程化。

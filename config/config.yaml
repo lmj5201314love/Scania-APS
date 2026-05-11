@@ -1,6 +1,6 @@
 project:
   name: scania_aps_predictive_maintenance
-  stage: missing_value_feature_ablation_study
+  stage: day10_distribution_diagnostics
 
 paths:
   train_raw: data/raw/aps_failure_training_set.csv

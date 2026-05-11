@@ -57,4 +57,4 @@ FN 代表真实 APS 故障被漏掉，业务风险高于 FP。因此本项目不
 
 ## 当前阶段优先级
 
-当前已完成 Day 1-7、项目清理和 validation-based model selection，进入 Missing Value & Feature Engineering Ablation Study 增强阶段。当前重点是在 train_inner / valid / official test 流程下系统比较缺失值处理和基础特征工程策略，验证缺失模式是否有信息，并评估 drop_50、drop_80、median_with_indicator、xgb_native_missing、低方差、高相关和 L1 特征选择等策略。本阶段不做 GridSearch、不做 SHAP、不做公开 baseline 对比、不重做风险分层、不修改 raw 数据、不覆盖 Day 4-Day 7 与 validation 旧结果；策略和阈值只能在 valid 上选择，official test 只用于最终评估，成本必须继续来自 cfg，不以 accuracy 作为核心指标。
+当前已完成 Day 1-7、项目清理、validation-based model selection 和缺失值/特征工程消融实验，进入 Day 10 字段级分布诊断阶段。当前重点是分析字段缺失率、零值率、近似零值率、偏态、长尾、pos/neg 分布差异和 train/valid/test 分布漂移，为后续结构特征设计做准备。本阶段不建模、不调参、不做 GridSearch、不做 SHAP、不新增结构特征实验、不修改 raw 数据、不覆盖历史结果；official test 只用于观察泛化风险，不能反向决定策略，也不能虚构匿名字段的物理含义。

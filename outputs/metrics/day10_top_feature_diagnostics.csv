@@ -1,0 +1,121 @@
+﻿diagnostic_type,rank,feature_name,metric_value,notes
+top_missing_features,1,br_000,0.821625,基于 train_inner 缺失率排序
+top_missing_features,2,bq_000,0.8130208333333333,基于 train_inner 缺失率排序
+top_missing_features,3,bp_000,0.79675,基于 train_inner 缺失率排序
+top_missing_features,4,bo_000,0.773875,基于 train_inner 缺失率排序
+top_missing_features,5,ab_000,0.7714791666666667,基于 train_inner 缺失率排序
+top_missing_features,6,cr_000,0.7714791666666667,基于 train_inner 缺失率排序
+top_missing_features,7,bn_000,0.7354375,基于 train_inner 缺失率排序
+top_missing_features,8,bm_000,0.661375,基于 train_inner 缺失率排序
+top_missing_features,9,bl_000,0.45510416666666664,基于 train_inner 缺失率排序
+top_missing_features,10,bk_000,0.38427083333333334,基于 train_inner 缺失率排序
+top_missing_features,11,cg_000,0.24729166666666666,基于 train_inner 缺失率排序
+top_missing_features,12,ch_000,0.24729166666666666,基于 train_inner 缺失率排序
+top_missing_features,13,cf_000,0.24729166666666666,基于 train_inner 缺失率排序
+top_missing_features,14,co_000,0.24729166666666666,基于 train_inner 缺失率排序
+top_missing_features,15,ad_000,0.24729166666666666,基于 train_inner 缺失率排序
+top_missing_features,16,cx_000,0.22960416666666666,基于 train_inner 缺失率排序
+top_missing_features,17,cy_000,0.22960416666666666,基于 train_inner 缺失率排序
+top_missing_features,18,cz_000,0.22960416666666666,基于 train_inner 缺失率排序
+top_missing_features,19,db_000,0.22960416666666666,基于 train_inner 缺失率排序
+top_missing_features,20,cv_000,0.22960416666666666,基于 train_inner 缺失率排序
+top_zero_features,1,as_000,0.9889375,基于 train_inner 零值率排序
+top_zero_features,2,au_000,0.98825,基于 train_inner 零值率排序
+top_zero_features,3,ag_000,0.9857916666666666,基于 train_inner 零值率排序
+top_zero_features,4,ay_009,0.98,基于 train_inner 零值率排序
+top_zero_features,5,ay_000,0.9795625,基于 train_inner 零值率排序
+top_zero_features,6,ag_001,0.9766666666666667,基于 train_inner 零值率排序
+top_zero_features,7,ay_001,0.9701041666666667,基于 train_inner 零值率排序
+top_zero_features,8,ay_002,0.9695625,基于 train_inner 零值率排序
+top_zero_features,9,ay_003,0.9680625,基于 train_inner 零值率排序
+top_zero_features,10,az_009,0.9583958333333333,基于 train_inner 零值率排序
+top_zero_features,11,cn_000,0.9550833333333333,基于 train_inner 零值率排序
+top_zero_features,12,ay_004,0.9528125,基于 train_inner 零值率排序
+top_zero_features,13,ef_000,0.9505208333333334,基于 train_inner 零值率排序
+top_zero_features,14,dz_000,0.9499166666666666,基于 train_inner 零值率排序
+top_zero_features,15,eg_000,0.9468125,基于 train_inner 零值率排序
+top_zero_features,16,ea_000,0.9424166666666667,基于 train_inner 零值率排序
+top_zero_features,17,cs_009,0.9409166666666666,基于 train_inner 零值率排序
+top_zero_features,18,ag_002,0.9361458333333333,基于 train_inner 零值率排序
+top_zero_features,19,dj_000,0.9301666666666667,基于 train_inner 零值率排序
+top_zero_features,20,dl_000,0.9295208333333334,基于 train_inner 零值率排序
+top_skewed_features,1,cs_009,217.84661000052756,基于 train_inner 偏态绝对值排序
+top_skewed_features,2,cf_000,190.07893055226555,基于 train_inner 偏态绝对值排序
+top_skewed_features,3,co_000,190.07892933342728,基于 train_inner 偏态绝对值排序
+top_skewed_features,4,ad_000,190.07892904887586,基于 train_inner 偏态绝对值排序
+top_skewed_features,5,dh_000,181.7330071824609,基于 train_inner 偏态绝对值排序
+top_skewed_features,6,az_009,147.73532295443587,基于 train_inner 偏态绝对值排序
+top_skewed_features,7,ay_009,145.90057707502393,基于 train_inner 偏态绝对值排序
+top_skewed_features,8,dj_000,140.82903125350953,基于 train_inner 偏态绝对值排序
+top_skewed_features,9,ag_000,139.62033699225998,基于 train_inner 偏态绝对值排序
+top_skewed_features,10,cs_007,129.84254806909513,基于 train_inner 偏态绝对值排序
+top_skewed_features,11,au_000,114.22724740527858,基于 train_inner 偏态绝对值排序
+top_skewed_features,12,cs_008,108.76857231109696,基于 train_inner 偏态绝对值排序
+top_skewed_features,13,cn_009,108.54448057448549,基于 train_inner 偏态绝对值排序
+top_skewed_features,14,ag_009,107.25963116199793,基于 train_inner 偏态绝对值排序
+top_skewed_features,15,as_000,106.45965241019087,基于 train_inner 偏态绝对值排序
+top_skewed_features,16,ct_000,104.87065244924035,基于 train_inner 偏态绝对值排序
+top_skewed_features,17,ak_000,104.26416534158558,基于 train_inner 偏态绝对值排序
+top_skewed_features,18,dz_000,103.58363171656029,基于 train_inner 偏态绝对值排序
+top_skewed_features,19,ay_001,102.7581819256961,基于 train_inner 偏态绝对值排序
+top_skewed_features,20,az_002,95.0056677862074,基于 train_inner 偏态绝对值排序
+top_pos_neg_missing_diff_features,1,br_000,0.7414830508474576,基于 train_inner 中 pos/neg 缺失率差异排序
+top_pos_neg_missing_diff_features,2,bq_000,0.7365466101694915,基于 train_inner 中 pos/neg 缺失率差异排序
+top_pos_neg_missing_diff_features,3,bp_000,0.7250847457627119,基于 train_inner 中 pos/neg 缺失率差异排序
+top_pos_neg_missing_diff_features,4,bo_000,0.706906779661017,基于 train_inner 中 pos/neg 缺失率差异排序
+top_pos_neg_missing_diff_features,5,bn_000,0.6703601694915254,基于 train_inner 中 pos/neg 缺失率差异排序
+top_pos_neg_missing_diff_features,6,bm_000,0.5975847457627119,基于 train_inner 中 pos/neg 缺失率差异排序
+top_pos_neg_missing_diff_features,7,di_000,0.4584110169491525,基于 train_inner 中 pos/neg 缺失率差异排序
+top_pos_neg_missing_diff_features,8,dh_000,0.45838983050847454,基于 train_inner 中 pos/neg 缺失率差异排序
+top_pos_neg_missing_diff_features,9,dk_000,0.45838983050847454,基于 train_inner 中 pos/neg 缺失率差异排序
+top_pos_neg_missing_diff_features,10,dj_000,0.45838983050847454,基于 train_inner 中 pos/neg 缺失率差异排序
+top_pos_neg_missing_diff_features,11,eb_000,0.45838983050847454,基于 train_inner 中 pos/neg 缺失率差异排序
+top_pos_neg_missing_diff_features,12,dl_000,0.45838983050847454,基于 train_inner 中 pos/neg 缺失率差异排序
+top_pos_neg_missing_diff_features,13,df_000,0.4583686440677966,基于 train_inner 中 pos/neg 缺失率差异排序
+top_pos_neg_missing_diff_features,14,dg_000,0.4583686440677966,基于 train_inner 中 pos/neg 缺失率差异排序
+top_pos_neg_missing_diff_features,15,dm_000,0.4583686440677966,基于 train_inner 中 pos/neg 缺失率差异排序
+top_pos_neg_missing_diff_features,16,ak_000,0.45800847457627125,基于 train_inner 中 pos/neg 缺失率差异排序
+top_pos_neg_missing_diff_features,17,ca_000,0.4575847457627118,基于 train_inner 中 pos/neg 缺失率差异排序
+top_pos_neg_missing_diff_features,18,ac_000,0.41014830508474576,基于 train_inner 中 pos/neg 缺失率差异排序
+top_pos_neg_missing_diff_features,19,ad_000,0.4044491525423729,基于 train_inner 中 pos/neg 缺失率差异排序
+top_pos_neg_missing_diff_features,20,co_000,0.4044491525423729,基于 train_inner 中 pos/neg 缺失率差异排序
+top_pos_neg_zero_diff_features,1,ai_000,0.6494703389830508,基于 train_inner 中 pos/neg 零值率差异排序
+top_pos_neg_zero_diff_features,2,al_000,0.558728813559322,基于 train_inner 中 pos/neg 零值率差异排序
+top_pos_neg_zero_diff_features,3,ag_003,0.5571822033898305,基于 train_inner 中 pos/neg 零值率差异排序
+top_pos_neg_zero_diff_features,4,am_0,0.5568220338983051,基于 train_inner 中 pos/neg 零值率差异排序
+top_pos_neg_zero_diff_features,5,ar_000,0.5283686440677966,基于 train_inner 中 pos/neg 零值率差异排序
+top_pos_neg_zero_diff_features,6,cn_001,0.5151059322033897,基于 train_inner 中 pos/neg 零值率差异排序
+top_pos_neg_zero_diff_features,7,df_000,0.4990677966101695,基于 train_inner 中 pos/neg 零值率差异排序
+top_pos_neg_zero_diff_features,8,dg_000,0.4941949152542373,基于 train_inner 中 pos/neg 零值率差异排序
+top_pos_neg_zero_diff_features,9,ag_002,0.4893008474576271,基于 train_inner 中 pos/neg 零值率差异排序
+top_pos_neg_zero_diff_features,10,ak_000,0.4823305084745763,基于 train_inner 中 pos/neg 零值率差异排序
+top_pos_neg_zero_diff_features,11,dh_000,0.4719703389830509,基于 train_inner 中 pos/neg 零值率差异排序
+top_pos_neg_zero_diff_features,12,dk_000,0.45826271186440676,基于 train_inner 中 pos/neg 零值率差异排序
+top_pos_neg_zero_diff_features,13,dj_000,0.4577966101694916,基于 train_inner 中 pos/neg 零值率差异排序
+top_pos_neg_zero_diff_features,14,dl_000,0.4545974576271186,基于 train_inner 中 pos/neg 零值率差异排序
+top_pos_neg_zero_diff_features,15,dm_000,0.45398305084745766,基于 train_inner 中 pos/neg 零值率差异排序
+top_pos_neg_zero_diff_features,16,cn_002,0.44389830508474576,基于 train_inner 中 pos/neg 零值率差异排序
+top_pos_neg_zero_diff_features,17,di_000,0.439385593220339,基于 train_inner 中 pos/neg 零值率差异排序
+top_pos_neg_zero_diff_features,18,cn_000,0.4373728813559322,基于 train_inner 中 pos/neg 零值率差异排序
+top_pos_neg_zero_diff_features,19,ba_009,0.43275423728813556,基于 train_inner 中 pos/neg 零值率差异排序
+top_pos_neg_zero_diff_features,20,ch_000,0.40555084745762715,基于 train_inner 中 pos/neg 零值率差异排序
+top_train_test_drift_features,1,ay_000,1.0,综合 train/test 缺失率、median 和 p99 相对差异排序，仅用于观察泛化风险
+top_train_test_drift_features,2,ay_009,1.0,综合 train/test 缺失率、median 和 p99 相对差异排序，仅用于观察泛化风险
+top_train_test_drift_features,3,ag_001,0.8377280130293167,综合 train/test 缺失率、median 和 p99 相对差异排序，仅用于观察泛化风险
+top_train_test_drift_features,4,da_000,0.5970272502063763,综合 train/test 缺失率、median 和 p99 相对差异排序，仅用于观察泛化风险
+top_train_test_drift_features,5,cl_000,0.5785859020017284,综合 train/test 缺失率、median 和 p99 相对差异排序，仅用于观察泛化风险
+top_train_test_drift_features,6,cn_000,0.5102775323527857,综合 train/test 缺失率、median 和 p99 相对差异排序，仅用于观察泛化风险
+top_train_test_drift_features,7,ag_002,0.4095380315651113,综合 train/test 缺失率、median 和 p99 相对差异排序，仅用于观察泛化风险
+top_train_test_drift_features,8,cy_000,0.3491179734435422,综合 train/test 缺失率、median 和 p99 相对差异排序，仅用于观察泛化风险
+top_train_test_drift_features,9,az_008,0.3285524030465339,综合 train/test 缺失率、median 和 p99 相对差异排序，仅用于观察泛化风险
+top_train_test_drift_features,10,cn_009,0.2820828781817909,综合 train/test 缺失率、median 和 p99 相对差异排序，仅用于观察泛化风险
+top_train_test_drift_features,11,cn_001,0.25643584377259515,综合 train/test 缺失率、median 和 p99 相对差异排序，仅用于观察泛化风险
+top_train_test_drift_features,12,ee_005,0.251192012991252,综合 train/test 缺失率、median 和 p99 相对差异排序，仅用于观察泛化风险
+top_train_test_drift_features,13,cm_000,0.25,综合 train/test 缺失率、median 和 p99 相对差异排序，仅用于观察泛化风险
+top_train_test_drift_features,14,ea_000,0.23954372623551,综合 train/test 缺失率、median 和 p99 相对差异排序，仅用于观察泛化风险
+top_train_test_drift_features,15,ab_000,0.2,综合 train/test 缺失率、median 和 p99 相对差异排序，仅用于观察泛化风险
+top_train_test_drift_features,16,ag_003,0.1952925396392088,综合 train/test 缺失率、median 和 p99 相对差异排序，仅用于观察泛化风险
+top_train_test_drift_features,17,ba_007,0.18567874911158494,综合 train/test 缺失率、median 和 p99 相对差异排序，仅用于观察泛化风险
+top_train_test_drift_features,18,am_0,0.18256454912595374,综合 train/test 缺失率、median 和 p99 相对差异排序，仅用于观察泛化风险
+top_train_test_drift_features,19,ay_006,0.17842278562544767,综合 train/test 缺失率、median 和 p99 相对差异排序，仅用于观察泛化风险
+top_train_test_drift_features,20,dv_000,0.17436773902714273,综合 train/test 缺失率、median 和 p99 相对差异排序，仅用于观察泛化风险
