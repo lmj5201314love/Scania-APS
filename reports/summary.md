@@ -745,3 +745,102 @@ Day 10 结果支持后续进入结构特征设计，但不应直接跳到复杂�
 5. 对 train/test 漂移较明显字段保持谨慎，不能使用 official test 反向决定策略。
 
 所有后续结构特征仍应在 validation 流程中选择，official test 只用于最终评估。
+
+# Day 11 前缀组结构信号分析
+
+## Day 11 目标
+
+Day 11 基于 Day 10 的字段级分布诊断结果，按匿名字段前缀进行结构分组分析。前缀只作为匿名结构分组线索，不能解释为具体传感器或部件含义。本阶段不建模、不调参、不做新的结构特征实验，也不使用 official test 反向决定策略。
+
+## 输出文件
+
+本轮已生成以下结果表：
+
+- `outputs/metrics/day11_prefix_group_summary.csv`
+- `outputs/metrics/day11_prefix_group_signal_ranking.csv`
+- `outputs/tables/day11_prefix_feature_members.csv`
+
+并生成以下图表：
+
+- `outputs/figures/day11_prefix_avg_missing_rate_top20.png`
+- `outputs/figures/day11_prefix_avg_zero_rate_top20.png`
+- `outputs/figures/day11_prefix_pos_neg_missing_diff_top20.png`
+- `outputs/figures/day11_prefix_signal_score_top20.png`
+- `outputs/figures/day11_prefix_drift_risk_top20.png`
+
+## 前缀组数量
+
+Day 11 共识别出 107 个字段前缀组。其中：
+
+- 100 个前缀组只包含 1 个字段；
+- 7 个前缀组包含 10 个字段，分别是 `ag`、`ay`、`az`、`ba`、`cn`、`cs`、`ee`。
+
+这个结果很重要：大多数前缀实际上不是“组”，不适合做前缀聚合主线；真正适合 Day 12 设计组聚合特征的是少数多字段前缀。
+
+## 高缺失前缀组
+
+平均缺失率最高的前缀组主要是单字段前缀：
+
+| prefix | feature_count | avg_missing_rate | max_missing_rate |
+|---|---:|---:|---:|
+| br | 1 | 0.8216 | 0.8216 |
+| bq | 1 | 0.8130 | 0.8130 |
+| bp | 1 | 0.7968 | 0.7968 |
+| bo | 1 | 0.7739 | 0.7739 |
+| cr | 1 | 0.7715 | 0.7715 |
+
+这些字段缺失信号强，但因为都是单字段前缀，不适合作为前缀聚合主线。它们更适合在单字段缺失指示或稳健处理时观察。
+
+## 高零值前缀组
+
+平均零值率最高的前缀组也多为单字段前缀：
+
+| prefix | feature_count | avg_zero_rate | max_zero_rate |
+|---|---:|---:|---:|
+| as | 1 | 0.9889 | 0.9889 |
+| au | 1 | 0.9883 | 0.9883 |
+| ef | 1 | 0.9505 | 0.9505 |
+| dz | 1 | 0.9499 | 0.9499 |
+| eg | 1 | 0.9468 | 0.9468 |
+
+多字段前缀中，`ay` 平均零值率最高，为 0.6809；`ag` 平均零值率为 0.5117；`cn` 平均零值率为 0.3277。这些结果支持 Day 12 尝试组内 zero-count、zero-rate 和非零值统计。
+
+## pos/neg 差异明显的前缀组
+
+pos/neg 缺失率差异最高的前缀仍然集中在单字段高缺失字段：
+
+- `br`
+- `bq`
+- `bp`
+- `bo`
+- `bn`
+
+pos/neg 零值率差异较明显的单字段前缀包括 `ai`、`al`、`am`、`ar`、`df`。多字段前缀中，`ag` 和 `cn` 的平均 pos/neg 零值差异相对更明显，分别为 0.2266 和 0.2049。
+
+## train/test drift 风险
+
+drift 风险较高的前缀包括 `cl`、`du`、`ec`、`dq`、`ed`，多数是单字段前缀。多字段前缀整体 drift 风险处于中等水平：
+
+| prefix | drift_risk_score | signal_score |
+|---|---:|---:|
+| ay | 0.5083 | 0.3207 |
+| ee | 0.5020 | 0.1501 |
+| az | 0.4959 | 0.2450 |
+| cs | 0.4828 | 0.2067 |
+| ag | 0.4826 | 0.3255 |
+| cn | 0.4814 | 0.2653 |
+| ba | 0.4784 | 0.1749 |
+
+这说明前缀组结构特征可以尝试，但仍需在 validation 上验证泛化稳定性。
+
+## Day 12 候选方向
+
+建议进入 Day 12 的前缀组结构特征候选为：
+
+1. `ag`：组内零值率较高，pos/neg 零值差异相对明显。
+2. `ay`：组内平均零值率最高，偏态明显。
+3. `cn`：零值率和 pos/neg 零值差异较明显。
+4. `az`、`cs`：偏态较高，可作为长尾结构候选。
+5. `ba`、`ee`：信号较弱，作为低优先级备选。
+
+Day 12 可以围绕这些前缀设计组内缺失计数、零值计数、零值率、非零值分位数和组内长尾统计。但所有设计仍必须通过 train_inner / valid 流程评估，official test 只用于最终评估。

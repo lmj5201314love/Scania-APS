@@ -28,6 +28,7 @@
 - `08_validation_model_selection.ipynb`：validation-based model selection，在 valid 上选择模型和阈值，再在 official test 上评估。
 - `09_feature_ablation_experiments.ipynb`：缺失值与特征工程消融实验，对比缺失处理、缺失指示、原生缺失和基础特征筛选策略。
 - `10_distribution_and_structural_signal_analysis.ipynb`：Day 10 字段级分布诊断，分析缺失率、零值率、偏态、长尾、pos/neg 差异和 train/test 漂移。
+- `11_prefix_group_signal_analysis.ipynb`：Day 11 前缀组结构信号分析，把匿名字段前缀作为结构分组线索，为 Day 12 结构特征设计做准备。
 
 Notebook 用于记录分析过程，不应堆放大量可复用函数；可复用逻辑应放入 `src/scania_aps/`。
 
@@ -38,6 +39,7 @@ Notebook 用于记录分析过程，不应堆放大量可复用函数；可复�
 - `data/clean_data.py`：baseline 和提升模型使用的基础数据准备逻辑。
 - `data/split_data.py`：从官方 training set 中划分 train_inner / valid，并保存 split indices。
 - `analysis/distribution_diagnostics.py`：字段级分布诊断工具，输出缺失、零值、偏态、长尾、pos/neg 差异和 train/valid/test 漂移统计。
+- `analysis/prefix_group_analysis.py`：前缀组结构信号分析工具，基于 Day 10 输出聚合匿名字段前缀组统计、信号排序和组内字段明细。
 - `features/build_features.py`：缺失值与特征工程消融实验的数据处理模块，支持 median、drop_50/drop_80、缺失指示、原生缺失、低方差、高相关和 L1 特征选择等策略。
 - `evaluation/cost_utils.py`：成本敏感评估函数，成本必须来自 cfg。
 - `evaluation/metrics.py`：precision、recall、F1、F2、PR-AUC 和 total cost 评估。
@@ -63,6 +65,7 @@ Notebook 用于记录分析过程，不应堆放大量可复用函数；可复�
 - `06_validation_model_selection.py`：运行 validation-based model selection，生成 valid 阈值结果和 official test 最终评估。
 - `07_feature_ablation_experiments.py`：运行缺失值与特征工程消融实验，输出 valid 阈值结果、official test 评估和策略元数据。
 - `08_distribution_diagnostics.py`：运行 Day 10 字段级分布诊断，生成可复用诊断表和基础图表。
+- `09_prefix_group_analysis.py`：运行 Day 11 前缀组结构信号分析，生成 prefix group 统计、排序、成员表和图表。
 - `generate_create_tables_sql.py`：根据原始 CSV 表头生成 MySQL 建表 SQL。
 - `generate_mysql_schema.py`：生成原始宽表相关 MySQL schema。
 - `generate_sql_missing_analysis.py`：生成宽表缺失率 SQL。
@@ -123,6 +126,17 @@ Day 10 字段级分布诊断新增的主要输出包括：
 - `outputs/figures/day10_train_test_drift_top20.png`
 - `outputs/figures/day10_zero_rate_top20.png`
 
+Day 11 前缀组结构信号分析新增的主要输出包括：
+
+- `outputs/metrics/day11_prefix_group_summary.csv`
+- `outputs/metrics/day11_prefix_group_signal_ranking.csv`
+- `outputs/tables/day11_prefix_feature_members.csv`
+- `outputs/figures/day11_prefix_avg_missing_rate_top20.png`
+- `outputs/figures/day11_prefix_avg_zero_rate_top20.png`
+- `outputs/figures/day11_prefix_pos_neg_missing_diff_top20.png`
+- `outputs/figures/day11_prefix_signal_score_top20.png`
+- `outputs/figures/day11_prefix_drift_risk_top20.png`
+
 这些是本地运行产物，通常不应强行提交到 GitHub。
 
 ## reports/
@@ -142,5 +156,6 @@ Day 10 字段级分布诊断新增的主要输出包括：
 - `test_feature_building.py`：缺失值与特征构建策略的轻量单元测试。
 - `test_feature_ablation_schema.py`：消融实验结果表 schema 测试。
 - `test_distribution_diagnostics.py`：字段级分布诊断函数测试。
+- `test_prefix_group_analysis.py`：前缀组结构信号分析函数测试。
 
 测试只覆盖关键业务函数，不追求过度工程化。

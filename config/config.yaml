@@ -1,6 +1,6 @@
 project:
   name: scania_aps_predictive_maintenance
-  stage: day10_distribution_diagnostics
+  stage: day11_prefix_group_signal_analysis
 
 paths:
   train_raw: data/raw/aps_failure_training_set.csv
