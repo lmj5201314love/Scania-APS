@@ -87,6 +87,29 @@ validation 流程只在 `valid` 上选择模型、缺失处理策略和阈值，
 
 结果说明：valid-based 流程下 official test 成本从 Day 6 回溯最优的 `8640` 上升到 `10190`，说明原 test 回溯阈值存在一定乐观偏差；但 XGBoost 仍然保持高 recall 和较低 total cost，策略整体没有失效。
 
+## 缺失值与特征工程消融实验
+
+在 validation-based 流程基础上，项目进一步比较了缺失值处理和基础特征工程策略。所有策略和阈值仍然只在 valid 上选择，official test 只用于最终评估。
+
+| 策略 | 模型 | valid best threshold | official test total cost | Recall | F2 | FP | FN | 结论 |
+|---|---|---:|---:|---:|---:|---:|---:|---|
+| drop_50_missing_median | XGBoost | 0.14 | 10820 | 0.9680 | 0.7740 | 482 | 12 | valid 成本最低，但 test 不如 drop_80 稳定 |
+| drop_80_missing_median | XGBoost | 0.14 | 10190 | 0.9707 | 0.7801 | 469 | 11 | 删除极高缺失字段较稳，是 validation 基准方案 |
+| median_all | XGBoost | 0.16 | 10820 | 0.9653 | 0.7890 | 432 | 13 | 保留全部字段表现稳定，但成本不最低 |
+| median_with_indicator | XGBoost | 0.10 | 10060 | 0.9760 | 0.7556 | 556 | 9 | test 观察成本最低，说明缺失指示有信息 |
+| xgb_native_missing | XGBoost | 0.18 | 11180 | 0.9600 | 0.8079 | 368 | 15 | F2 和 precision 较好，但 FN 增加导致成本不占优 |
+| missing_indicator_only | XGBoost | 0.78 | 27570 | 0.8987 | 0.6255 | 857 | 38 | 缺失模式有信号，但不能单独替代原始数值 |
+| low_variance_filter | XGBoost | 0.12 | 10510 | 0.9707 | 0.7696 | 501 | 11 | 轻量可保留，但不是最优 |
+| high_correlation_filter | XGBoost | 0.13 | 12410 | 0.9600 | 0.7656 | 491 | 15 | 当前不建议作为主线 |
+| l1_feature_selection | Logistic | 0.35 | 16780 | 0.9360 | 0.7535 | 478 | 24 | 可作线性模型解释辅助，但不是最优 |
+
+关键发现：
+
+- `missing_indicator_only` 的 AP 明显高于正类基准率，说明缺失模式本身确实携带预测信号。
+- `median_with_indicator` 在 official test 观察中成本最低，但这不能作为 test 反选策略的依据，只能说明该方向值得后续验证。
+- `drop_50_missing_median` 在 valid 上最好，但 test 上不如 `drop_80_missing_median` 稳定，说明高缺失字段不能只凭缺失率机械删除。
+- `xgb_native_missing` 没有在 total cost 上胜出，但 F2 较高，后续可在轻量调参中保留观察。
+
 ## 项目阶段
 
 - Day 1：项目初始化与业务理解。
@@ -98,6 +121,7 @@ validation 流程只在 `valid` 上选择模型、缺失处理策略和阈值，
 - Day 7：风险分层、维修优先级建议和项目交付整理。
 - Cleanup：项目结构清理、空文件处理、SQL 成本说明和结构文档补充。
 - Enhancement 1：Validation-based model selection，在 valid 上选择模型和阈值，再在 official test 上评估。
+- Enhancement 2：Missing value & feature engineering ablation study，系统比较缺失值处理和基础特征工程策略。
 
 ## 技术栈
 
@@ -145,11 +169,21 @@ python scripts/05_build_risk_tables.py
 python scripts/06_validation_model_selection.py
 ```
 
+运行缺失值与特征工程消融实验：
+
+```powershell
+python scripts/07_feature_ablation_experiments.py
+```
+
 主要输出：
 
 - `outputs/metrics/day6_best_threshold_summary.csv`
 - `outputs/metrics/final_test_evaluation_from_valid_selection.csv`
 - `outputs/metrics/validation_vs_day6_backtest_compare.csv`
+- `outputs/metrics/feature_ablation_valid_best_summary.csv`
+- `outputs/metrics/feature_ablation_final_test_results.csv`
+- `outputs/tables/feature_ablation_strategy_metadata.csv`
+- `outputs/tables/missing_indicator_signal_summary.csv`
 - `outputs/tables/day7_maintenance_priority_list.csv`
 - `outputs/tables/day7_risk_level_summary.csv`
 - `outputs/tables/day7_business_result_summary.csv`
@@ -172,10 +206,9 @@ docs/project_structure.md
 
 ## 后续增强方向
 
-1. 做缺失值策略和特征工程消融实验：`drop_50_missing_median`、`median_with_indicator`、`xgb_native_missing`、低方差过滤、高相关过滤和 L1 选择。
-2. 做轻量级 XGBoost 调参，但避免把项目变成纯调参项目。
-3. 深化 SQL 业务分析，例如 Top-K 检修容量、不同风险等级实际故障率和维修工作量评估。
-4. 补充模型解释，例如特征重要性和 SHAP，但不虚构匿名特征的物理含义。
+1. 基于 validation 流程做轻量级 XGBoost 调参，但避免把项目变成纯调参项目。
+2. 深化 SQL 业务分析，例如 Top-K 检修容量、不同风险等级实际故障率和维修工作量评估。
+3. 补充模型解释，例如特征重要性和 SHAP，但不虚构匿名特征的物理含义。
 
 ## 简历表达建议
 

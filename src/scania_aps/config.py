@@ -68,6 +68,7 @@ class ScaniaConfig:
     high_missing_threshold: float
     validation_valid_size: float
     validation_stratify: bool
+    feature_ablation: dict[str, Any]
     advanced_models: dict[str, Any]
 
 
@@ -86,6 +87,13 @@ def _resolve_project_path(project_root: Path, value: str | Path) -> Path:
     return path if path.is_absolute() else project_root / path
 
 
+def _validate_probability(value: Any, name: str) -> None:
+    """校验 0 到 1 之间的比例参数。"""
+
+    if not isinstance(value, (int, float)) or not 0 < float(value) < 1:
+        raise ValueError(f"{name} 必须是 0 到 1 之间的数值。")
+
+
 def _validate_config(raw_config: dict[str, Any], project_root: Path) -> None:
     """执行轻量配置校验。"""
 
@@ -101,6 +109,7 @@ def _validate_config(raw_config: dict[str, Any], project_root: Path) -> None:
             "evaluation",
             "model",
             "validation",
+            "feature_ablation",
             "advanced_models",
         ],
     )
@@ -125,9 +134,16 @@ def _validate_config(raw_config: dict[str, Any], project_root: Path) -> None:
     if positive_label not in target_mapping or negative_label not in target_mapping:
         raise ValueError("target_mapping 必须包含 positive_label 和 negative_label。")
 
-    valid_size = raw_config["validation"]["valid_size"]
-    if not isinstance(valid_size, (int, float)) or not 0 < float(valid_size) < 1:
-        raise ValueError("validation.valid_size 必须是 0 到 1 之间的数值。")
+    _validate_probability(raw_config["validation"]["valid_size"], "validation.valid_size")
+
+    feature_ablation = raw_config["feature_ablation"]
+    if "missing_thresholds" not in feature_ablation:
+        raise ValueError("feature_ablation 必须包含 missing_thresholds 配置。")
+    for name, threshold in feature_ablation["missing_thresholds"].items():
+        _validate_probability(threshold, f"feature_ablation.missing_thresholds.{name}")
+
+    correlation_threshold = feature_ablation.get("correlation_threshold")
+    _validate_probability(correlation_threshold, "feature_ablation.correlation_threshold")
 
     advanced_models = raw_config["advanced_models"]
     if "random_forest" not in advanced_models or "xgboost" not in advanced_models:
@@ -168,5 +184,6 @@ def get_config(config_path: str | Path | None = None) -> ScaniaConfig:
         high_missing_threshold=raw_config["model"]["high_missing_threshold"],
         validation_valid_size=float(raw_config["validation"]["valid_size"]),
         validation_stratify=bool(raw_config["validation"]["stratify"]),
+        feature_ablation=raw_config["feature_ablation"],
         advanced_models=raw_config["advanced_models"],
     )

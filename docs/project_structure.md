@@ -6,7 +6,7 @@
 
 - `README.md`：面向 GitHub、简历和面试官的项目总览，重点展示业务背景、核心结果、运行方式和项目局限。
 - `AGENTS.md`：给 Codex 或后续协作者使用的项目协作规范。
-- `config/config.yaml`：项目配置的单一事实来源，包含数据路径、标签映射、缺失值 token、业务成本、评估指标、模型参数和 validation 划分配置。
+- `config/config.yaml`：项目配置的单一事实来源，包含数据路径、标签映射、缺失值 token、业务成本、评估指标、模型参数、validation 划分配置和消融实验配置。
 - `requirements.txt`：项目基础依赖。
 - `.env.example`：MySQL 连接配置模板，不包含真实密码。
 
@@ -26,6 +26,7 @@
 - `06_threshold_cost_analysis.ipynb`：Day 6 基于已有预测概率的阈值成本敏感性分析。
 - `07_risk_level_and_business_summary.ipynb`：Day 7 风险分层、维修优先级和业务交付总结。
 - `08_validation_model_selection.ipynb`：validation-based model selection，在 valid 上选择模型和阈值，再在 official test 上评估。
+- `09_feature_ablation_experiments.ipynb`：缺失值与特征工程消融实验，对比缺失处理、缺失指示、原生缺失和基础特征筛选策略。
 
 Notebook 用于记录分析过程，不应堆放大量可复用函数；可复用逻辑应放入 `src/scania_aps/`。
 
@@ -35,6 +36,7 @@ Notebook 用于记录分析过程，不应堆放大量可复用函数；可复�
 - `data/load_data.py`：读取原始 train/test，并按配置映射 target。
 - `data/clean_data.py`：baseline 和提升模型使用的基础数据准备逻辑。
 - `data/split_data.py`：从官方 training set 中划分 train_inner / valid，并保存 split indices。
+- `features/build_features.py`：缺失值与特征工程消融实验的数据处理模块，支持 median、drop_50/drop_80、缺失指示、原生缺失、低方差、高相关和 L1 特征选择等策略。
 - `evaluation/cost_utils.py`：成本敏感评估函数，成本必须来自 cfg。
 - `evaluation/metrics.py`：precision、recall、F1、F2、PR-AUC 和 total cost 评估。
 - `evaluation/threshold_utils.py`：阈值网格分析和低成本阈值汇总。
@@ -42,10 +44,10 @@ Notebook 用于记录分析过程，不应堆放大量可复用函数；可复�
 - `models/train_baseline.py`：Dummy / Logistic baseline 训练和评估。
 - `models/train_advanced.py`：Random Forest / XGBoost 提升模型训练和评估。
 - `models/validation_selection.py`：在 train_inner/valid/test 流程中选择模型、策略和阈值。
+- `models/feature_ablation.py`：运行缺失值与特征工程消融实验，在 valid 上选择阈值，并在 official test 上评估。
 
 以下模块为后续增强预留，当前只保留说明，避免空文件造成误解：
 
-- `features/build_features.py`：后续特征工程和消融实验。
 - `models/predict.py`：后续批量预测入口。
 - `database/mysql_io.py`、`database/write_predictions.py`：后续自动写入 MySQL。
 - `visualization/plots.py`：后续复用可视化函数。
@@ -57,6 +59,7 @@ Notebook 用于记录分析过程，不应堆放大量可复用函数；可复�
 - `04_evaluate_thresholds.py`：读取 Day 4/Day 5 预测概率，运行 Day 6 阈值成本分析。
 - `05_build_risk_tables.py`：读取 Day 6 最优阈值和 Day 5 预测概率，生成 Day 7 风险分层和维修优先级 CSV。
 - `06_validation_model_selection.py`：运行 validation-based model selection，生成 valid 阈值结果和 official test 最终评估。
+- `07_feature_ablation_experiments.py`：运行缺失值与特征工程消融实验，输出 valid 阈值结果、official test 评估和策略元数据。
 - `generate_create_tables_sql.py`：根据原始 CSV 表头生成 MySQL 建表 SQL。
 - `generate_mysql_schema.py`：生成原始宽表相关 MySQL schema。
 - `generate_sql_missing_analysis.py`：生成宽表缺失率 SQL。
@@ -97,6 +100,14 @@ validation 增强新增的主要输出包括：
 - `data/interim/splits/train_inner_indices.csv`
 - `data/interim/splits/valid_indices.csv`
 
+缺失值与特征工程消融实验新增的主要输出包括：
+
+- `outputs/metrics/feature_ablation_valid_threshold_metrics.csv`
+- `outputs/metrics/feature_ablation_valid_best_summary.csv`
+- `outputs/metrics/feature_ablation_final_test_results.csv`
+- `outputs/tables/feature_ablation_strategy_metadata.csv`
+- `outputs/tables/missing_indicator_signal_summary.csv`
+
 这些是本地运行产物，通常不应强行提交到 GitHub。
 
 ## reports/
@@ -113,5 +124,7 @@ validation 增强新增的主要输出包括：
 - `test_threshold_utils.py`：阈值分析工具测试。
 - `test_split_data.py`：validation 划分工具测试。
 - `test_output_schema.py`：关键输出文件 schema 轻量检查。
+- `test_feature_building.py`：缺失值与特征构建策略的轻量单元测试。
+- `test_feature_ablation_schema.py`：消融实验结果表 schema 测试。
 
 测试只覆盖关键业务函数，不追求过度工程化。

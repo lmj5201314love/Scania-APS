@@ -538,3 +538,103 @@ valid 结果：
 ## 下一步建议
 
 下一轮建议进入缺失值和特征工程消融实验，但继续沿用 validation-based 流程：所有策略、模型和阈值选择都在 valid 上完成，official test 只用于最终评估。
+
+# Enhancement 2 缺失值与特征工程消融实验总结
+
+## 增强目标
+
+本轮在 validation-based 流程下系统比较缺失值处理和基础特征工程策略，重点回答三个问题：
+
+1. 缺失模式本身是否携带预测信号。
+2. `drop_50_missing_median`、`drop_80_missing_median` 和 `median_all` 哪个更稳。
+3. `xgb_native_missing`、低方差过滤、高相关过滤和 L1 特征选择是否值得进入后续主线。
+
+所有模型、策略和阈值仍然只在 `valid` 上选择，official test 只用于最终评估。本轮没有修改 `data/raw/`，没有做 GridSearch、SHAP、公开 baseline 对比或风险分层重做。
+
+## 实验范围
+
+本轮比较的策略包括：
+
+- `median_all`
+- `drop_80_missing_median`
+- `drop_50_missing_median`
+- `median_with_indicator`
+- `xgb_native_missing`
+- `missing_indicator_only`
+- `low_variance_filter`
+- `high_correlation_filter`
+- `l1_feature_selection`
+
+模型控制在 `logistic_regression_balanced` 和 `xgboost_scale_pos_weight`，避免把本轮变成大规模模型堆叠或调参实验。
+
+## valid 上的主要结果
+
+按 valid total cost 选择，最低成本组合为：
+
+```text
+XGBoost + drop_50_missing_median + threshold 0.14
+```
+
+valid 结果：
+
+- precision = 0.3403
+- recall = 0.9800
+- F2 = 0.7122
+- FP = 380
+- FN = 4
+- total_cost = 5,800
+
+这说明更激进地删除缺失率大于等于 50% 的字段，在 valid 上可以降低成本，但是否稳定还需要看 official test。
+
+## official test 最终评估观察
+
+official test 上的关键结果如下：
+
+| 策略 | 模型 | valid best threshold | official test total cost | Recall | F2 | FP | FN |
+|---|---|---:|---:|---:|---:|---:|---:|
+| median_with_indicator | XGBoost | 0.10 | 10060 | 0.9760 | 0.7556 | 556 | 9 |
+| drop_80_missing_median | XGBoost | 0.14 | 10190 | 0.9707 | 0.7801 | 469 | 11 |
+| low_variance_filter | XGBoost | 0.12 | 10510 | 0.9707 | 0.7696 | 501 | 11 |
+| drop_50_missing_median | XGBoost | 0.14 | 10820 | 0.9680 | 0.7740 | 482 | 12 |
+| median_all | XGBoost | 0.16 | 10820 | 0.9653 | 0.7890 | 432 | 13 |
+| xgb_native_missing | XGBoost | 0.18 | 11180 | 0.9600 | 0.8079 | 368 | 15 |
+| high_correlation_filter | XGBoost | 0.13 | 12410 | 0.9600 | 0.7656 | 491 | 15 |
+| l1_feature_selection | Logistic | 0.35 | 16780 | 0.9360 | 0.7535 | 478 | 24 |
+
+注意：official test 结果只用于最终评估和稳定性观察，不能反过来作为策略选择依据。因此，虽然 `median_with_indicator` 在 official test 上观察到最低 total cost，但不能直接写成最终最优方案，只能说明缺失指示变量值得后续继续验证。
+
+## 缺失模式是否有信息
+
+`missing_indicator_only` 只使用“字段是否缺失”的 0/1 指示变量，不使用任何原始数值特征。
+
+结果显示：
+
+- XGBoost + `missing_indicator_only` 在 valid 上 average_precision = 0.4616，而 valid 正类基准率约为 0.0167。
+- 在 official test 上 average_precision = 0.4713，而 test 正类基准率约为 0.0234。
+- official test 上 recall = 0.8987，FN = 38，total cost = 27,570。
+
+结论：缺失模式本身确实携带预测信号，但单独使用缺失指示变量会产生较多 FP，不能替代原始数值特征。更合理的方向是把缺失指示作为原始数值特征的补充。
+
+## 策略判断
+
+- `drop_80_missing_median`：test 表现更稳，是当前 validation 基准方案。
+- `drop_50_missing_median`：valid 成本最低，但 test 上不如 drop_80 稳定，说明高缺失字段不能只凭缺失率机械删除。
+- `median_all`：保留全部字段表现稳定，F2 较高，但 total cost 不最低。
+- `median_with_indicator`：验证了缺失指示方向有价值，建议进入下一轮 validation 或轻量调参继续观察。
+- `xgb_native_missing`：F2 和 precision 较好，但 FN 增加导致 total cost 不占优。
+- `low_variance_filter`：只删除 `cd_000`，轻量可保留，但不是主导提升来源。
+- `high_correlation_filter`：删除 25 个相关字段后成本变高，当前不建议作为主线。
+- `l1_feature_selection`：对线性模型解释有辅助价值，但不是当前性能最优方向。
+
+## 本轮输出文件
+
+- `outputs/metrics/feature_ablation_valid_threshold_metrics.csv`
+- `outputs/metrics/feature_ablation_valid_best_summary.csv`
+- `outputs/metrics/feature_ablation_final_test_results.csv`
+- `outputs/tables/feature_ablation_strategy_metadata.csv`
+- `outputs/tables/missing_indicator_signal_summary.csv`
+- `notebooks/09_feature_ablation_experiments.ipynb`
+
+## 下一步建议
+
+下一步可以进入轻量级调参或模型解释性分析。更推荐先做小范围 XGBoost 参数实验，并继续坚持：参数、策略和阈值只在 validation 上选择，official test 只做最终评估。如果进入模型解释，应使用特征重要性或 SHAP 解释匿名特征的相对贡献，但不能虚构传感器物理含义。

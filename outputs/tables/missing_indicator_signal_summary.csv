@@ -1,0 +1,3 @@
+﻿model_name,strategy,valid_best_threshold,valid_average_precision,valid_pos_rate,valid_total_cost,test_average_precision,test_pos_rate,test_recall,test_f2,test_fp,test_fn,test_total_cost,signal_note
+xgboost_scale_pos_weight,missing_indicator_only,0.78,0.46162434036188565,0.016666666666666666,13330,0.4712524757017011,0.0234375,0.8986666666666666,0.625463994060876,857,38,27570,AP 高于正类基准率，说明缺失模式本身存在一定信号
+logistic_regression_balanced,missing_indicator_only,0.64,0.3681888606431342,0.016666666666666666,15070,0.4353083620676278,0.0234375,0.8853333333333333,0.5838902567710166,1011,43,31610,AP 高于正类基准率，说明缺失模式本身存在一定信号

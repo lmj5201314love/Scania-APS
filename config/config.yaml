@@ -1,6 +1,6 @@
 project:
   name: scania_aps_predictive_maintenance
-  stage: validation_based_model_selection
+  stage: missing_value_feature_ablation_study
 
 paths:
   train_raw: data/raw/aps_failure_training_set.csv
@@ -43,6 +43,25 @@ model:
 validation:
   valid_size: 0.2
   stratify: true
+
+feature_ablation:
+  missing_thresholds:
+    drop_50: 0.50
+    drop_80: 0.80
+
+  variance_threshold: 0.0
+  correlation_threshold: 0.95
+
+  enable_strategies:
+    - median_all
+    - drop_80_missing_median
+    - drop_50_missing_median
+    - median_with_indicator
+    - xgb_native_missing
+    - low_variance_filter
+    - high_correlation_filter
+    - l1_feature_selection
+    - missing_indicator_only
 
 advanced_models:
   random_forest:

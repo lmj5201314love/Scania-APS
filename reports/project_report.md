@@ -106,7 +106,42 @@ official test 最终评估结果为：
 
 相比 Day 6 test 回溯最优，valid-based 流程在 official test 上 total cost 高出 1,550，FP 增加 55，FN 增加 2。这说明 Day 6 结果存在一定测试集回溯乐观偏差；同时，valid 选择出的 XGBoost 方案仍然保持较高 recall 和较低业务成本，整体方向是稳定的。
 
-## 9. 业务建议
+## 9. 缺失值与特征工程消融实验
+
+在 validation-based 流程基础上，本轮进一步比较缺失值处理和基础特征工程策略。实验仍然只在 `valid` 上选择策略和阈值，official test 只用于最终评估，避免用测试集反向选择方案。
+
+本轮覆盖的主要策略包括：
+
+- `median_all`：保留全部字段并做 median 填充。
+- `drop_80_missing_median`：删除 train_inner 中缺失率大于等于 80% 的字段。
+- `drop_50_missing_median`：删除 train_inner 中缺失率大于等于 50% 的字段。
+- `median_with_indicator`：median 填充并加入缺失指示变量。
+- `xgb_native_missing`：仅用于 XGBoost，保留 NaN，由模型原生处理缺失。
+- `missing_indicator_only`：只使用每个字段是否缺失的 0/1 指示变量。
+- `low_variance_filter`、`high_correlation_filter`、`l1_feature_selection`：基础特征筛选对照实验。
+
+关键结果如下：
+
+| 策略 | 模型 | valid best threshold | official test total cost | Recall | F2 | FP | FN | 结论 |
+|---|---|---:|---:|---:|---:|---:|---:|---|
+| drop_50_missing_median | XGBoost | 0.14 | 10820 | 0.9680 | 0.7740 | 482 | 12 | valid 成本最低，但 test 不如 drop_80 稳定 |
+| drop_80_missing_median | XGBoost | 0.14 | 10190 | 0.9707 | 0.7801 | 469 | 11 | 删除极高缺失字段较稳，是 validation 基准方案 |
+| median_all | XGBoost | 0.16 | 10820 | 0.9653 | 0.7890 | 432 | 13 | 保留全部字段表现稳定，但成本不最低 |
+| median_with_indicator | XGBoost | 0.10 | 10060 | 0.9760 | 0.7556 | 556 | 9 | test 观察成本最低，说明缺失指示有信息 |
+| xgb_native_missing | XGBoost | 0.18 | 11180 | 0.9600 | 0.8079 | 368 | 15 | F2 和 precision 较好，但 FN 增加导致成本不占优 |
+| missing_indicator_only | XGBoost | 0.78 | 27570 | 0.8987 | 0.6255 | 857 | 38 | 缺失模式有信号，但不能单独替代原始数值 |
+| high_correlation_filter | XGBoost | 0.13 | 12410 | 0.9600 | 0.7656 | 491 | 15 | 当前不建议作为主线 |
+| l1_feature_selection | Logistic | 0.35 | 16780 | 0.9360 | 0.7535 | 478 | 24 | 可作线性模型解释辅助，但不是最优 |
+
+本轮最重要的结论不是“某个复杂策略一定更好”，而是：
+
+1. `missing_indicator_only` 的 AP 明显高于正类基准率，说明缺失模式本身确实携带预测信号。
+2. `median_with_indicator` 在 official test 观察中成本最低，但由于 test 不参与策略选择，只能把它视为值得后续验证的方向，而不是最终方案。
+3. `drop_50_missing_median` 在 valid 上 total cost 最低，但 official test 上不如 `drop_80_missing_median` 稳定，说明高缺失字段不能只凭缺失率机械删除。
+4. `xgb_native_missing` 没有在 total cost 上胜出，但 F2 较高，可以在后续轻量调参中继续保留观察。
+5. 高相关过滤和 L1 特征选择有助于理解特征冗余或线性模型行为，但当前不适合作为主线方案。
+
+## 10. 业务建议
 
 如果强调 Day 7 业务交付，可以继续展示 XGBoost + `median_all` + threshold 0.20 的风险分层结果，但必须说明其阈值来自测试集回溯分析。
 
@@ -118,7 +153,7 @@ XGBoost + drop_high_missing_median + threshold 0.14
 
 该方案在 official test 上 FN = 11、total cost = 10,190，虽然不如 test 回溯最优低，但更接近真实模型选择流程。
 
-## 10. 项目局限
+## 11. 项目局限
 
 1. 数据集较老，不代表最新车辆系统。
 2. 特征匿名，无法解释具体传感器物理含义。
@@ -127,10 +162,9 @@ XGBoost + drop_high_missing_median + threshold 0.14
 5. validation-based 流程仍然是单次划分，尚未做时间切分或交叉验证。
 6. 缺少真实车辆 ID、维修记录和生产环境验证。
 
-## 11. 后续改进方向
+## 12. 后续改进方向
 
 - 引入时间窗口和车辆 ID，构建真实提前预警任务。
 - 与维修容量结合，设计 Top-K 检修策略。
-- 补充缺失值指示变量、XGBoost 原生缺失处理和特征工程消融实验。
 - 做轻量级调参，但阈值和参数选择必须基于 validation，而不是 official test。
 - 补充模型解释，例如特征重要性和 SHAP，但不虚构匿名特征物理含义。

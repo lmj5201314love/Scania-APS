@@ -57,4 +57,4 @@ FN 代表真实 APS 故障被漏掉，业务风险高于 FP。因此本项目不
 
 ## 当前阶段优先级
 
-当前已完成 Day 1-7 和一轮项目清理，进入 validation-based model selection 增强阶段。当前重点是从官方 training set 中划分 train_inner / valid，在 train_inner 上训练候选模型，在 valid 上选择模型、缺失处理策略和阈值，并在 official test 上只做一次最终评估。本阶段不做 GridSearch、不做新的特征工程、不修改 raw 数据、不覆盖 Day 4-Day 7 结果；成本必须继续来自 cfg，不以 accuracy 作为核心指标，也不能把 validation 或 test 回溯结果写成生产环境最终阈值。
+当前已完成 Day 1-7、项目清理和 validation-based model selection，进入 Missing Value & Feature Engineering Ablation Study 增强阶段。当前重点是在 train_inner / valid / official test 流程下系统比较缺失值处理和基础特征工程策略，验证缺失模式是否有信息，并评估 drop_50、drop_80、median_with_indicator、xgb_native_missing、低方差、高相关和 L1 特征选择等策略。本阶段不做 GridSearch、不做 SHAP、不做公开 baseline 对比、不重做风险分层、不修改 raw 数据、不覆盖 Day 4-Day 7 与 validation 旧结果；策略和阈值只能在 valid 上选择，official test 只用于最终评估，成本必须继续来自 cfg，不以 accuracy 作为核心指标。

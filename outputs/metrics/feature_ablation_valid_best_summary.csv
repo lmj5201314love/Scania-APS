@@ -1,0 +1,17 @@
+﻿selection_rank,model_name,strategy,best_threshold,precision,recall,f1,f2,fp,fn,total_cost,average_precision,n_features,n_dropped_features,imputation_method,has_missing_indicator,missing_drop_threshold,feature_filter,variance_threshold,correlation_threshold,selector_model,uses_raw_numeric_values
+1,xgboost_scale_pos_weight,drop_50_missing_median,0.14,0.3402777777777778,0.98,0.5051546391752577,0.7122093023255814,380,4,5800,0.8679488452708481,162,8,median,False,0.5,,,,,
+2,xgboost_scale_pos_weight,median_with_indicator,0.1,0.3059006211180124,0.985,0.466824644549763,0.6821329639889196,447,3,5970,0.8652092543692249,339,0,median,True,,,,,,
+3,xgboost_scale_pos_weight,low_variance_filter,0.12,0.3305227655986509,0.98,0.4943253467843632,0.7035175879396985,397,4,5970,0.8593008121371899,169,1,median,False,,variance_threshold,0.0,,,
+4,xgboost_scale_pos_weight,high_correlation_filter,0.13,0.3277591973244147,0.98,0.49122807017543857,0.7010014306151645,402,4,6020,0.8591819622187776,145,25,median,False,,high_correlation_filter,,0.95,,
+5,xgboost_scale_pos_weight,xgb_native_missing,0.18,0.381139489194499,0.97,0.5472496473906912,0.7410236822001528,315,6,6150,0.8807747906404584,170,0,xgboost_native_missing,False,,,,,,
+6,xgboost_scale_pos_weight,drop_80_missing_median,0.14,0.33163265306122447,0.975,0.4949238578680203,0.702449567723343,393,5,6430,0.8672027424157809,168,2,median,False,0.8,,,,,
+7,xgboost_scale_pos_weight,median_all,0.16,0.3592592592592593,0.97,0.5243243243243243,0.7238805970149254,346,6,6460,0.8672391835035448,170,0,median,False,,,,,,
+8,logistic_regression_balanced,high_correlation_filter,0.69,0.4339622641509434,0.92,0.5897435897435898,0.7516339869281046,240,16,10400,0.7282343532025,145,25,median,False,,high_correlation_filter,,0.95,,
+9,logistic_regression_balanced,median_with_indicator,0.51,0.3438077634011091,0.93,0.5020242914979757,0.6935123042505593,355,14,10550,0.7222358859060279,339,0,median,True,,,,,,
+10,logistic_regression_balanced,low_variance_filter,0.38,0.3263157894736842,0.93,0.4831168831168831,0.6788321167883211,384,14,10840,0.7228658824926889,169,1,median,False,,variance_threshold,0.0,,,
+11,logistic_regression_balanced,drop_50_missing_median,0.24,0.27089337175792505,0.94,0.42058165548098436,0.6291834002677377,506,12,11060,0.7271696554058702,162,8,median,False,0.5,,,,,
+12,logistic_regression_balanced,drop_80_missing_median,0.31,0.2961783439490446,0.93,0.4492753623188406,0.6512605042016807,442,14,11420,0.7253431677535397,168,2,median,False,0.8,,,,,
+13,logistic_regression_balanced,median_all,0.36,0.3125,0.925,0.4671717171717172,0.6645114942528736,407,15,11570,0.7220925037400098,170,0,median,False,,,,,,
+14,logistic_regression_balanced,l1_feature_selection,0.35,0.31092436974789917,0.925,0.46540880503144655,0.6630824372759857,410,15,11600,0.7208257264796033,163,7,median,False,,l1_feature_selection,,,LogisticRegression_l1_liblinear,
+15,xgboost_scale_pos_weight,missing_indicator_only,0.78,0.2271062271062271,0.93,0.3650637880274779,0.5744286596664607,633,14,13330,0.46162434036188565,170,0,none,True,,missing_indicator_only,,,,False
+16,logistic_regression_balanced,missing_indicator_only,0.64,0.19639065817409768,0.925,0.3239929947460595,0.5309988518943742,757,15,15070,0.3681888606431342,170,0,none,True,,missing_indicator_only,,,,False

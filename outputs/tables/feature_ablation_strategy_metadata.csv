@@ -1,0 +1,17 @@
+﻿model_name,strategy,n_features,n_dropped_features,dropped_features,imputation_method,has_missing_indicator,missing_drop_threshold,feature_filter,variance_threshold,correlation_threshold,selector_model,uses_raw_numeric_values
+logistic_regression_balanced,median_all,170,0,,median,False,,,,,,
+xgboost_scale_pos_weight,median_all,170,0,,median,False,,,,,,
+logistic_regression_balanced,drop_80_missing_median,168,2,bq_000|br_000,median,False,0.8,,,,,
+xgboost_scale_pos_weight,drop_80_missing_median,168,2,bq_000|br_000,median,False,0.8,,,,,
+logistic_regression_balanced,drop_50_missing_median,162,8,ab_000|bm_000|bn_000|bo_000|bp_000|bq_000|br_000|cr_000,median,False,0.5,,,,,
+xgboost_scale_pos_weight,drop_50_missing_median,162,8,ab_000|bm_000|bn_000|bo_000|bp_000|bq_000|br_000|cr_000,median,False,0.5,,,,,
+logistic_regression_balanced,median_with_indicator,339,0,,median,True,,,,,,
+xgboost_scale_pos_weight,median_with_indicator,339,0,,median,True,,,,,,
+xgboost_scale_pos_weight,xgb_native_missing,170,0,,xgboost_native_missing,False,,,,,,
+logistic_regression_balanced,low_variance_filter,169,1,cd_000,median,False,,variance_threshold,0.0,,,
+xgboost_scale_pos_weight,low_variance_filter,169,1,cd_000,median,False,,variance_threshold,0.0,,,
+logistic_regression_balanced,high_correlation_filter,145,25,am_0|an_000|ao_000|ba_003|ba_004|bb_000|bg_000|bh_000|bj_000|bo_000|bp_000|bq_000|br_000|bt_000|bu_000|bv_000|cc_000|cf_000|ci_000|cn_005|co_000|cq_000|dn_000|dt_000|ee_004,median,False,,high_correlation_filter,,0.95,,
+xgboost_scale_pos_weight,high_correlation_filter,145,25,am_0|an_000|ao_000|ba_003|ba_004|bb_000|bg_000|bh_000|bj_000|bo_000|bp_000|bq_000|br_000|bt_000|bu_000|bv_000|cc_000|cf_000|ci_000|cn_005|co_000|cq_000|dn_000|dt_000|ee_004,median,False,,high_correlation_filter,,0.95,,
+logistic_regression_balanced,l1_feature_selection,163,7,am_0|bj_000|cd_000|cf_000|co_000|cs_005|dl_000,median,False,,l1_feature_selection,,,LogisticRegression_l1_liblinear,
+logistic_regression_balanced,missing_indicator_only,170,0,,none,True,,missing_indicator_only,,,,False
+xgboost_scale_pos_weight,missing_indicator_only,170,0,,none,True,,missing_indicator_only,,,,False
