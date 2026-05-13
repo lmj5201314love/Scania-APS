@@ -7,6 +7,7 @@
 - `README.md`：面向 GitHub、简历和面试官的项目总览，重点展示业务背景、核心结果、运行方式和项目局限。
 - `AGENTS.md`：给 Codex 或后续协作者使用的项目协作规范。
 - `config/config.yaml`：项目配置的单一事实来源，包含数据路径、标签映射、缺失值 token、业务成本、评估指标、模型参数、validation 划分配置和消融实验配置。
+- `config/structural_features.yaml`：Day 12 结构特征设计配置，记录候选前缀组、样本级统计、prefix 聚合、missing indicator 和异常统计的开关与阈值。
 - `requirements.txt`：项目基础依赖。
 - `.env.example`：MySQL 连接配置模板，不包含真实密码。
 
@@ -29,6 +30,7 @@
 - `09_feature_ablation_experiments.ipynb`：缺失值与特征工程消融实验，对比缺失处理、缺失指示、原生缺失和基础特征筛选策略。
 - `10_distribution_and_structural_signal_analysis.ipynb`：Day 10 字段级分布诊断，分析缺失率、零值率、偏态、长尾、pos/neg 差异和 train/test 漂移。
 - `11_prefix_group_signal_analysis.ipynb`：Day 11 前缀组结构信号分析，把匿名字段前缀作为结构分组线索，为 Day 12 结构特征设计做准备。
+- `12_structural_feature_design.ipynb`：Day 12 结构特征方案设计，只整理特征家族、fit/transform 边界和 Day 13 实验矩阵，不训练模型。
 
 Notebook 用于记录分析过程，不应堆放大量可复用函数；可复用逻辑应放入 `src/scania_aps/`。
 
@@ -41,6 +43,7 @@ Notebook 用于记录分析过程，不应堆放大量可复用函数；可复�
 - `analysis/distribution_diagnostics.py`：字段级分布诊断工具，输出缺失、零值、偏态、长尾、pos/neg 差异和 train/valid/test 漂移统计。
 - `analysis/prefix_group_analysis.py`：前缀组结构信号分析工具，基于 Day 10 输出聚合匿名字段前缀组统计、信号排序和组内字段明细。
 - `features/build_features.py`：缺失值与特征工程消融实验的数据处理模块，支持 median、drop_50/drop_80、缺失指示、原生缺失、低方差、高相关和 L1 特征选择等策略。
+- `features/structural_feature_design.py`：Day 12 结构特征设计表生成工具，只生成设计说明表，不生成训练特征矩阵。
 - `evaluation/cost_utils.py`：成本敏感评估函数，成本必须来自 cfg。
 - `evaluation/metrics.py`：precision、recall、F1、F2、PR-AUC 和 total cost 评估。
 - `evaluation/threshold_utils.py`：阈值网格分析和低成本阈值汇总。
@@ -66,6 +69,7 @@ Notebook 用于记录分析过程，不应堆放大量可复用函数；可复�
 - `07_feature_ablation_experiments.py`：运行缺失值与特征工程消融实验，输出 valid 阈值结果、official test 评估和策略元数据。
 - `08_distribution_diagnostics.py`：运行 Day 10 字段级分布诊断，生成可复用诊断表和基础图表。
 - `09_prefix_group_analysis.py`：运行 Day 11 前缀组结构信号分析，生成 prefix group 统计、排序、成员表和图表。
+- `10_build_structural_feature_design.py`：生成 Day 12 结构特征设计表，明确每类特征的来源、计算方式、fit/transform 边界和 Day 13 优先级。
 - `generate_create_tables_sql.py`：根据原始 CSV 表头生成 MySQL 建表 SQL。
 - `generate_mysql_schema.py`：生成原始宽表相关 MySQL schema。
 - `generate_sql_missing_analysis.py`：生成宽表缺失率 SQL。
@@ -137,6 +141,12 @@ Day 11 前缀组结构信号分析新增的主要输出包括：
 - `outputs/figures/day11_prefix_signal_score_top20.png`
 - `outputs/figures/day11_prefix_drift_risk_top20.png`
 
+Day 12 结构特征方案设计新增的主要输出包括：
+
+- `docs/structural_feature_design.md`
+- `config/structural_features.yaml`
+- `outputs/tables/day12_structural_feature_design_table.csv`
+
 这些是本地运行产物，通常不应强行提交到 GitHub。
 
 ## reports/
@@ -157,5 +167,6 @@ Day 11 前缀组结构信号分析新增的主要输出包括：
 - `test_feature_ablation_schema.py`：消融实验结果表 schema 测试。
 - `test_distribution_diagnostics.py`：字段级分布诊断函数测试。
 - `test_prefix_group_analysis.py`：前缀组结构信号分析函数测试。
+- `test_structural_feature_design.py`：结构特征设计配置和设计表生成测试。
 
 测试只覆盖关键业务函数，不追求过度工程化。

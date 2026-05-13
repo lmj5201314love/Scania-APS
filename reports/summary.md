@@ -844,3 +844,101 @@ drift 风险较高的前缀包括 `cl`、`du`、`ec`、`dq`、`ed`，多数是�
 5. `ba`、`ee`：信号较弱，作为低优先级备选。
 
 Day 12 可以围绕这些前缀设计组内缺失计数、零值计数、零值率、非零值分位数和组内长尾统计。但所有设计仍必须通过 train_inner / valid 流程评估，official test 只用于最终评估。
+
+# Day 12 结构特征方案设计
+
+## Day 12 目标
+
+Day 12 只做结构特征方案设计，不训练模型、不调参、不做阈值分析、不做 SHAP、不生成 processed 特征矩阵。目标是把 Day 10 字段级分布诊断和 Day 11 前缀组结构信号分析整理成可执行的 Day 13 实验方案。
+
+## 新增交付物
+
+本轮新增：
+
+- `docs/structural_feature_design.md`
+- `config/structural_features.yaml`
+- `scripts/10_build_structural_feature_design.py`
+- `notebooks/12_structural_feature_design.ipynb`
+- `outputs/tables/day12_structural_feature_design_table.csv`
+
+设计表共 64 行，其中 60 行进入 Day 13 第一轮，4 行异常/长尾统计作为第二轮备选。高优先级设计行数为 48 行。
+
+## 设计的结构特征家族
+
+Day 12 设计了 6 类结构特征家族：
+
+1. 样本级缺失统计：
+   - `sample_missing_count`
+   - `sample_missing_rate`
+   - `sample_non_missing_count`
+
+2. 样本级零值统计：
+   - `sample_zero_count`
+   - `sample_zero_rate`
+   - `sample_non_zero_count`
+
+3. 前缀组缺失聚合：
+   - `prefix_ag_missing_count`
+   - `prefix_ag_missing_rate`
+   - `prefix_ay_missing_count`
+   - `prefix_ay_missing_rate`
+   - 其他候选前缀类似。
+
+4. 前缀组零值聚合：
+   - `prefix_ag_zero_count`
+   - `prefix_ag_zero_rate`
+   - `prefix_ay_zero_count`
+   - `prefix_ay_zero_rate`
+   - `prefix_cn_zero_count`
+   - `prefix_cn_zero_rate`
+
+5. 筛选后的 missing indicators：
+   - 候选字段只基于 train_inner 的缺失率和 pos/neg 缺失率差异筛选。
+   - 当前阈值为 `missing_rate >= 0.01` 且 `abs(pos_missing_rate - neg_missing_rate) >= 0.10`。
+   - 当前最多选择 30 个字段。
+   - Top 候选包括 `br_000`、`bq_000`、`bp_000`、`bo_000`、`bn_000`、`bm_000`、`di_000`、`dh_000`、`dj_000`、`dk_000`。
+
+6. 可选异常 / 长尾统计：
+   - `sample_outlier_count_p99`
+   - `sample_outlier_rate_p99`
+   - `prefix_az_outlier_count`
+   - `prefix_cs_outlier_count`
+   - 暂不进入 Day 13 第一轮。
+
+## Day 13 第一轮实验矩阵建议
+
+第一轮建议只做以下受控对照：
+
+- `median_all`
+- `median_all_sample_missing`
+- `median_all_sample_zero`
+- `median_all_prefix_missing`
+- `median_all_prefix_zero`
+- `median_all_selected_missing_indicators`
+- `median_all_structural_all`
+
+这些实验的目标不是堆模型，而是验证结构信号是否能在 validation-based 流程下改善 recall、F2、PR-AUC 和 total cost。
+
+## 暂时不做的内容
+
+Day 13 第一轮暂不做：
+
+- PCA
+- SVM
+- 大规模 GridSearch
+- SHAP
+- official test 反向筛选
+- 长尾 outlier 特征作为主线
+- 任何基于 test 结果的特征保留决策
+
+## 必须遵守的边界
+
+所有规则都必须只在 `train_inner` 上 fit，包括：
+
+- 数值字段列表；
+- prefix membership；
+- selected missing indicators；
+- outlier 分位数阈值；
+- 任何字段筛选规则。
+
+`valid` 用于选择结构特征方案和阈值，`official test` 只用于最终评估。字段匿名，不能解释具体物理含义。

@@ -57,4 +57,4 @@ FN 代表真实 APS 故障被漏掉，业务风险高于 FP。因此本项目不
 
 ## 当前阶段优先级
 
-当前已完成 Day 1-7、项目清理、validation-based model selection、缺失值/特征工程消融实验和 Day 10 字段级分布诊断，进入 Day 11 前缀组结构信号分析阶段。当前重点是把字段前缀作为匿名结构分组线索，分析前缀组的缺失率、零值率、pos/neg 差异、偏态和 train/test drift，为 Day 12 结构特征设计做准备。本阶段不建模、不调参、不做 GridSearch、不做 SHAP、不新增结构特征实验、不修改 raw 数据、不覆盖历史结果；字段前缀不能解释为具体物理含义，official test 只用于观察泛化风险，不能反向决定策略。
+当前已完成 Day 1-7、项目清理、validation-based model selection、缺失值/特征工程消融实验、Day 10 字段级分布诊断和 Day 11 前缀组结构信号分析，进入 Day 12 结构特征方案设计阶段。当前重点是基于 Day 10/Day 11 结果设计样本级缺失统计、样本级零值统计、前缀组聚合、筛选后的 missing indicators 和可选长尾统计方案，为 Day 13 实验做准备。本阶段只设计，不训练模型、不调参、不做阈值分析、不做 GridSearch、不做 SHAP、不生成 processed 特征矩阵、不修改 raw 数据、不覆盖历史结果；所有规则必须说明只能在 train_inner 上 fit，valid 用于选择方案，official test 只用于最终评估，且不能解释匿名字段真实物理含义。

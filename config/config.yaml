@@ -1,10 +1,11 @@
 project:
   name: scania_aps_predictive_maintenance
-  stage: day11_prefix_group_signal_analysis
+  stage: day12_structural_feature_design
 
 paths:
   train_raw: data/raw/aps_failure_training_set.csv
   test_raw: data/raw/aps_failure_test_set.csv
+  structural_features_config_path: config/structural_features.yaml
   interim_dir: data/interim
   processed_dir: data/processed
   figures_dir: outputs/figures

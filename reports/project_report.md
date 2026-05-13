@@ -188,7 +188,34 @@ Day 12 建议优先观察：
 4. `az`、`cs`：偏态较高，可作为长尾结构候选。
 5. `ba`、`ee`：组内信号较弱，作为低优先级备选。
 
-## 12. 业务建议
+## 12. 结构特征方案设计
+
+Day 12 不训练模型，也不生成 processed 特征矩阵，而是把 Day 10 / Day 11 的结构信号整理为可执行的结构特征方案。设计结果写入 `docs/structural_feature_design.md`、`config/structural_features.yaml` 和 `outputs/tables/day12_structural_feature_design_table.csv`。
+
+本轮设计了六类结构特征家族：
+
+1. 样本级缺失统计：`sample_missing_count`、`sample_missing_rate`、`sample_non_missing_count`。
+2. 样本级零值统计：`sample_zero_count`、`sample_zero_rate`、`sample_non_zero_count`。
+3. 前缀组缺失聚合：对 `ag`、`ay`、`cn`、`az`、`cs`、`ba`、`ee` 生成 prefix missing count/rate。
+4. 前缀组零值聚合：重点对 `ag`、`ay`、`cn`、`az`、`cs` 生成 prefix zero count/rate。
+5. 筛选后的 missing indicators：只基于 train_inner 的缺失率和 pos/neg 缺失率差异筛选候选字段。
+6. 可选异常/长尾统计：例如 p99 outlier count/rate，暂不进入 Day 13 第一轮。
+
+结构特征设计表共 64 行，其中 60 行进入 Day 13 第一轮，4 行异常/长尾统计作为第二轮备选。设计表中 selected missing indicators 候选数为 30，Top 字段包括 `br_000`、`bq_000`、`bp_000`、`bo_000`、`bn_000`、`bm_000`、`di_000`、`dh_000`、`dj_000`、`dk_000`。
+
+Day 13 第一轮建议实验矩阵为：
+
+- `median_all`
+- `median_all_sample_missing`
+- `median_all_sample_zero`
+- `median_all_prefix_missing`
+- `median_all_prefix_zero`
+- `median_all_selected_missing_indicators`
+- `median_all_structural_all`
+
+暂不做 PCA、SVM、大规模 GridSearch、SHAP，也不使用 official test 反向筛选结构特征。所有字段列表、prefix membership、indicator 候选和异常阈值都必须只在 train_inner 上 fit，valid 用于选择方案和阈值，official test 只用于最终评估。
+
+## 13. 业务建议
 
 如果强调 Day 7 业务交付，可以继续展示 XGBoost + `median_all` + threshold 0.20 的风险分层结果，但必须说明其阈值来自测试集回溯分析。
 
@@ -200,7 +227,7 @@ XGBoost + drop_high_missing_median + threshold 0.14
 
 该方案在 official test 上 FN = 11、total cost = 10,190，虽然不如 test 回溯最优低，但更接近真实模型选择流程。
 
-## 13. 项目局限
+## 14. 项目局限
 
 1. 数据集较老，不代表最新车辆系统。
 2. 特征匿名，无法解释具体传感器物理含义。
@@ -209,10 +236,10 @@ XGBoost + drop_high_missing_median + threshold 0.14
 5. validation-based 流程仍然是单次划分，尚未做时间切分或交叉验证。
 6. 缺少真实车辆 ID、维修记录和生产环境验证。
 
-## 14. 后续改进方向
+## 15. 后续改进方向
 
 - 引入时间窗口和车辆 ID，构建真实提前预警任务。
 - 与维修容量结合，设计 Top-K 检修策略。
-- 基于 Day 10 / Day 11 诊断结果设计样本级缺失计数、零值计数、前缀组统计和长尾稳健处理对照实验。
+- 基于 Day 12 设计表实现结构特征实验，并坚持 train_inner/valid/test 的严格边界。
 - 做轻量级调参，但阈值和参数选择必须基于 validation，而不是 official test。
 - 补充模型解释，例如特征重要性和 SHAP，但不虚构匿名特征物理含义。

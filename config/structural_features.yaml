@@ -1,0 +1,48 @@
+structural_features:
+  candidate_prefix_groups:
+    high_priority:
+      - ag
+      - ay
+      - cn
+    medium_priority:
+      - az
+      - cs
+    low_priority:
+      - ba
+      - ee
+
+  sample_level_features:
+    enable_missing_summary: true
+    enable_zero_summary: true
+    enable_outlier_summary: false
+
+  prefix_level_features:
+    enable_prefix_missing_summary: true
+    enable_prefix_zero_summary: true
+    enable_prefix_outlier_summary: false
+
+  selected_missing_indicators:
+    min_missing_rate: 0.01
+    min_abs_pos_neg_missing_diff: 0.10
+    max_selected_features: 30
+
+  selected_zero_indicators:
+    enable: false
+    min_zero_rate: 0.10
+    min_abs_pos_neg_zero_diff: 0.10
+    max_selected_features: 30
+
+  outlier_features:
+    enable: false
+    quantile_high: 0.99
+    quantile_low: 0.01
+
+  experiment_plan:
+    first_round:
+      - median_all
+      - median_all_sample_missing
+      - median_all_sample_zero
+      - median_all_prefix_missing
+      - median_all_prefix_zero
+      - median_all_selected_missing_indicators
+      - median_all_structural_all

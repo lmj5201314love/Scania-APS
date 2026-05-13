@@ -122,6 +122,8 @@ validation 流程只在 `valid` 上选择模型、缺失处理策略和阈值，
 - Cleanup：项目结构清理、空文件处理、SQL 成本说明和结构文档补充。
 - Enhancement 1：Validation-based model selection，在 valid 上选择模型和阈值，再在 official test 上评估。
 - Enhancement 2：Missing value & feature engineering ablation study，系统比较缺失值处理和基础特征工程策略。
+- Day 10/11：完成字段级分布诊断和前缀组结构信号分析。
+- Day 12：进入结构特征方案设计，当前只输出设计表和实验计划，不训练模型、不报告效果提升。
 
 ## 技术栈
 
