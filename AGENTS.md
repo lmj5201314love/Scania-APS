@@ -57,4 +57,4 @@ FN 代表真实 APS 故障被漏掉，业务风险高于 FP。因此本项目不
 
 ## 当前阶段优先级
 
-当前已完成 Day 1-7、项目清理、validation-based model selection、缺失值/特征工程消融实验、Day 10 字段级分布诊断和 Day 11 前缀组结构信号分析，进入 Day 12 结构特征方案设计阶段。当前重点是基于 Day 10/Day 11 结果设计样本级缺失统计、样本级零值统计、前缀组聚合、筛选后的 missing indicators 和可选长尾统计方案，为 Day 13 实验做准备。本阶段只设计，不训练模型、不调参、不做阈值分析、不做 GridSearch、不做 SHAP、不生成 processed 特征矩阵、不修改 raw 数据、不覆盖历史结果；所有规则必须说明只能在 train_inner 上 fit，valid 用于选择方案，official test 只用于最终评估，且不能解释匿名字段真实物理含义。
+当前已完成 Day 1-7、项目清理、validation-based model selection、缺失值/特征工程消融实验、Day 10 字段级分布诊断、Day 11 前缀组结构信号分析和 Day 12 结构特征方案设计，进入 Day 13 结构特征 valid 实验阶段。当前重点是只在 train_inner / valid 上验证 sample_missing_rate、selected missing indicators、prefix zero rate、structural_core 和 structural_all 等结构特征组是否有增益；official test 不参与本阶段评估或反向选择，留到 Day 14 对前 1-2 个 valid 候选方案做最终观察。本阶段不做 GridSearch、不做 SHAP、不做 PCA、不加入 SVM、不解释匿名字段真实物理含义、不生成 processed 大矩阵、不修改 raw 数据、不覆盖历史结果；成本函数继续从 cfg 读取。

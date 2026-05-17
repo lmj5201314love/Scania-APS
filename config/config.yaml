@@ -1,6 +1,6 @@
 project:
   name: scania_aps_predictive_maintenance
-  stage: day12_structural_feature_design
+  stage: day13_structural_feature_valid_experiments
 
 paths:
   train_raw: data/raw/aps_failure_training_set.csv

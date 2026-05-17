@@ -942,3 +942,53 @@ Day 13 第一轮暂不做：
 - 任何字段筛选规则。
 
 `valid` 用于选择结构特征方案和阈值，`official test` 只用于最终评估。字段匿名，不能解释具体物理含义。
+
+# Day 13 结构特征第一轮 valid 实验
+
+## 本轮目标
+
+Day 13 在 Day 12 结构特征设计的基础上，开始做第一轮结构特征实验。本轮严格只使用 official training set 内部划分出的 `train_inner / valid`，不使用 official test 做评估或反向选择。
+
+本轮只训练 XGBoost，不做 GridSearch、不做 SHAP、不做 PCA、不加入 SVM，也不解释匿名字段的真实物理含义。
+
+## 实验组
+
+本轮没有把 Day 12 的 60 个结构特征一次性作为主结论，而是按结构信号来源拆成 6 个实验组：
+
+| experiment_group | 结构特征数 | 说明 |
+|---|---:|---|
+| baseline_median_all | 0 | 原始数值特征 median_all，不加结构特征 |
+| median_all_sample_missing_rate | 1 | 增加样本级缺失率 |
+| median_all_selected_missing_indicators_top30 | 30 | 增加 train_inner 上筛选出的 Top 30 missing indicators |
+| median_all_prefix_zero_rate | 5 | 增加 ag、ay、cn、az、cs 前缀组零值率 |
+| median_all_structural_core | 36 | sample_missing_rate + Top 30 missing indicators + prefix zero rate |
+| median_all_structural_all | 60 | Day 12 第一轮全部结构特征，仅作为上限观察 |
+
+## valid 结果
+
+| experiment_group | best_threshold | Precision | Recall | F2 | PR-AUC | FP | FN | Total Cost |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| median_all_structural_all | 0.18 | 0.3679 | 0.9750 | 0.7331 | 0.8635 | 335 | 5 | 5850 |
+| median_all_selected_missing_indicators_top30 | 0.30 | 0.4308 | 0.9650 | 0.7732 | 0.8604 | 255 | 7 | 6050 |
+| median_all_prefix_zero_rate | 0.09 | 0.2936 | 0.9850 | 0.6696 | 0.8625 | 474 | 3 | 6240 |
+| median_all_sample_missing_rate | 0.15 | 0.3421 | 0.9750 | 0.7117 | 0.8660 | 375 | 5 | 6250 |
+| baseline_median_all | 0.16 | 0.3593 | 0.9700 | 0.7239 | 0.8672 | 346 | 6 | 6460 |
+| median_all_structural_core | 0.16 | 0.3540 | 0.9700 | 0.7196 | 0.8706 | 354 | 6 | 6540 |
+
+## 关键观察
+
+1. `median_all_structural_all` 在 valid 上 total cost 最低，为 5850，但它包含 60 个结构特征，只能作为上限观察，不能直接作为最终主结论。
+2. `median_all_selected_missing_indicators_top30` 是更窄、更可解释的候选方案，valid total cost 从 baseline 的 6460 降到 6050，主要通过减少 FP 获得成本下降，但 FN 从 6 增加到 7。
+3. `median_all_prefix_zero_rate` 的 FN 最低，为 3，recall 达到 0.9850，说明前缀组零值率可能包含结构信号；但 FP 增加到 474，precision 明显下降。
+4. `median_all_sample_missing_rate` 相比 baseline 降低了 valid total cost，并把 FN 从 6 降到 5，说明样本整体缺失程度存在一定信号。
+5. `median_all_structural_core` 没有接近 `structural_all`，且略差于 baseline，说明简单叠加核心结构特征可能引入冗余或噪声，需要 Day 14 谨慎观察。
+
+## Day 14 建议
+
+Day 14 建议只选择 1-2 个 valid 候选方案进入 official test 最终观察：
+
+1. `median_all_structural_all`：valid 成本最低，但作为结构特征上限方案观察泛化风险；
+2. `median_all_selected_missing_indicators_top30`：结构更窄、成本较低，适合作为更稳健的候选方案。
+
+如果 Day 14 需要额外观察漏报控制，可以把 `median_all_prefix_zero_rate` 作为补充方案，但不建议把它作为主方案，因为 FP 较高。
+

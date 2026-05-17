@@ -243,3 +243,21 @@ XGBoost + drop_high_missing_median + threshold 0.14
 - 基于 Day 12 设计表实现结构特征实验，并坚持 train_inner/valid/test 的严格边界。
 - 做轻量级调参，但阈值和参数选择必须基于 validation，而不是 official test。
 - 补充模型解释，例如特征重要性和 SHAP，但不虚构匿名特征物理含义。
+
+## 16. 结构特征 valid 实验
+
+在 Day 12 完成结构特征方案设计后，项目进入 Day 13 第一轮结构特征实验。本轮不使用 official test，而是在 official training set 内部划分出的 `train_inner / valid` 上完成结构特征方案和阈值选择。
+
+本轮实验收窄为 XGBoost + median_all 基线，并按结构信号来源分组验证：样本级缺失率、筛选后的 missing indicators、前缀组零值率、核心结构组合以及全部结构特征上限方案。实验结果显示，`median_all_structural_all` 在 valid 上成本最低，但由于特征数量最多，只能视为上限观察；`median_all_selected_missing_indicators_top30` 更窄、更适合进入 Day 14 做 official test 最终观察。
+
+| 实验组 | valid best threshold | valid total cost | Recall | F2 | FP | FN | 解释 |
+|---|---:|---:|---:|---:|---:|---:|---|
+| baseline_median_all | 0.16 | 6460 | 0.9700 | 0.7239 | 346 | 6 | 不加结构特征 |
+| median_all_sample_missing_rate | 0.15 | 6250 | 0.9750 | 0.7117 | 375 | 5 | 样本整体缺失程度有一定信号 |
+| median_all_selected_missing_indicators_top30 | 0.30 | 6050 | 0.9650 | 0.7732 | 255 | 7 | 更窄的 missing indicator 候选方案 |
+| median_all_prefix_zero_rate | 0.09 | 6240 | 0.9850 | 0.6696 | 474 | 3 | 前缀组零值率可减少 FN，但 FP 较高 |
+| median_all_structural_core | 0.16 | 6540 | 0.9700 | 0.7196 | 354 | 6 | 核心结构组合暂未优于 baseline |
+| median_all_structural_all | 0.18 | 5850 | 0.9750 | 0.7331 | 335 | 5 | 上限观察，需警惕冗余和过拟合 |
+
+这些结果只代表 valid 阶段的候选结论。Day 14 应选择 `median_all_structural_all` 和 `median_all_selected_missing_indicators_top30` 进入 official test 最终观察，不能把 valid 最优方案直接写成最终方案。
+

@@ -170,3 +170,25 @@ Day 12 结构特征方案设计新增的主要输出包括：
 - `test_structural_feature_design.py`：结构特征设计配置和设计表生成测试。
 
 测试只覆盖关键业务函数，不追求过度工程化。
+
+## Day 13 结构特征 valid 实验补充
+
+Day 13 新增文件和输出如下：
+
+- `src/scania_aps/features/structural_features.py`：结构特征 fit/transform 工具，只在 train_inner 上确定字段列表、前缀成员关系和 selected missing indicator 字段，再应用到 valid。
+- `src/scania_aps/models/structural_feature_experiments.py`：结构特征 valid-only 实验模块，使用 XGBoost 比较不同结构特征组的 valid 阈值结果。
+- `scripts/11_structural_feature_valid_experiments.py`：从项目根目录运行 Day 13 实验，只使用 train_inner / valid，不使用 official test。
+- `notebooks/13_structural_feature_valid_experiments.ipynb`：记录 Day 13 实验流程、实验组、valid 结果和 Day 14 建议。
+- `tests/test_structural_features.py`：测试样本级缺失率、样本级零值率、前缀组零值率、selected missing indicators 和 transform 不修改原始 DataFrame。
+- `tests/test_structural_feature_experiments_schema.py`：测试结构特征实验结果表 schema。
+
+Day 13 新增本地输出：
+
+- `outputs/metrics/day13_structural_feature_valid_threshold_metrics.csv`
+- `outputs/metrics/day13_structural_feature_valid_best_summary.csv`
+- `outputs/tables/day13_structural_feature_experiment_metadata.csv`
+- `outputs/tables/day13_selected_missing_indicator_columns.csv`
+- `outputs/tables/day13_structural_feature_names_by_group.csv`
+
+这些输出只代表 valid 阶段结果，不应被解释为 official test 或生产环境最终结论。
+
