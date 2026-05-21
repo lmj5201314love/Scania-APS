@@ -192,3 +192,21 @@ Day 13 新增本地输出：
 
 这些输出只代表 valid 阶段结果，不应被解释为 official test 或生产环境最终结论。
 
+## Day 14 结构特征 official test 观察补充
+
+Day 14 新增文件和输出如下：
+
+- `src/scania_aps/models/structural_feature_test_evaluation.py`：结构特征候选方案 official test 观察模块，固定使用 Day 13 valid 阈值，不在 test 上重新选择方案。
+- `scripts/12_structural_feature_test_evaluation.py`：从项目根目录运行 Day 14 official test 观察，输出 test 指标、预测明细、valid/test 对比和元数据。
+- `notebooks/14_structural_feature_test_evaluation.ipynb`：记录 Day 14 固定候选方案、official test 观察结果和泛化判断。
+- `tests/test_structural_feature_test_evaluation_schema.py`：使用小型模拟数据测试 Day 14 输出 schema 和阈值来源。
+
+Day 14 新增本地输出：
+
+- `outputs/metrics/day14_structural_feature_test_results.csv`
+- `outputs/metrics/day14_structural_feature_valid_test_compare.csv`
+- `outputs/predictions/day14_structural_feature_test_predictions.csv`
+- `outputs/tables/day14_structural_feature_test_metadata.csv`
+
+这些输出只用于观察 Day 13 valid 候选方案在 official test 上的泛化情况，不能用于反向修改 Day 13 候选组或阈值。
+

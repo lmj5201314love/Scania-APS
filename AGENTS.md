@@ -57,4 +57,18 @@ FN 代表真实 APS 故障被漏掉，业务风险高于 FP。因此本项目不
 
 ## 当前阶段优先级
 
-当前已完成 Day 1-7、项目清理、validation-based model selection、缺失值/特征工程消融实验、Day 10 字段级分布诊断、Day 11 前缀组结构信号分析和 Day 12 结构特征方案设计，进入 Day 13 结构特征 valid 实验阶段。当前重点是只在 train_inner / valid 上验证 sample_missing_rate、selected missing indicators、prefix zero rate、structural_core 和 structural_all 等结构特征组是否有增益；official test 不参与本阶段评估或反向选择，留到 Day 14 对前 1-2 个 valid 候选方案做最终观察。本阶段不做 GridSearch、不做 SHAP、不做 PCA、不加入 SVM、不解释匿名字段真实物理含义、不生成 processed 大矩阵、不修改 raw 数据、不覆盖历史结果；成本函数继续从 cfg 读取。
+当前已完成 Day 1-7、项目清理、validation-based model selection、缺失值/特征工程消融实验、Day 10 字段级分布诊断、Day 11 前缀组结构信号分析、Day 12 结构特征方案设计和 Day 13 结构特征 valid-only 实验，进入 Day 14 结构特征候选方案 official test 最终观察阶段。当前重点是固定 Day 13 valid 选出的 baseline、selected missing indicators Top 30、prefix zero rate 和 structural_all 等少数候选方案，使用 valid best threshold 在 official test 上做一次最终观察；不允许根据 test 结果反向修改候选方案、结构规则或阈值。本阶段不做 GridSearch、不做 SHAP、不做 PCA、不加入 SVM、不解释匿名字段真实物理含义、不修改 raw 数据、不覆盖历史结果；成本函数继续从 cfg 读取。
+
+## Agent skills
+
+### Issue tracker
+
+本项目使用 GitHub Issues 跟踪任务、缺陷和需求。详见 `docs/agents/issue-tracker.md`。
+
+### Triage labels
+
+本项目使用默认五类 triage 标签：`needs-triage`、`needs-info`、`ready-for-agent`、`ready-for-human`、`wontfix`。详见 `docs/agents/triage-labels.md`。
+
+### Domain docs
+
+本项目使用 single-context 领域文档布局：根目录 `CONTEXT.md` 和 `docs/adr/`。详见 `docs/agents/domain.md`。

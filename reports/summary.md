@@ -992,3 +992,47 @@ Day 14 建议只选择 1-2 个 valid 候选方案进入 official test 最终观�
 
 如果 Day 14 需要额外观察漏报控制，可以把 `median_all_prefix_zero_rate` 作为补充方案，但不建议把它作为主方案，因为 FP 较高。
 
+# Day 14 结构特征候选方案 official test 最终观察
+
+## 本轮目标
+
+Day 14 只对 Day 13 valid 选出的少数候选方案做 official test 最终观察。本轮不在 test 上重新选择策略、结构特征或阈值，也不根据 test 结果反向修改 Day 13 的选择逻辑。
+
+所有 imputer 和结构特征规则仍然只在 train_inner 上 fit，official test 只做 transform 和最终观察。
+
+## 固定候选方案
+
+本轮评估 4 个候选方案：
+
+| candidate_group | valid threshold | 说明 |
+|---|---:|---|
+| baseline_median_all | 0.16 | 不加结构特征，用作对照 |
+| median_all_selected_missing_indicators_top30 | 0.30 | 更窄的 selected missing indicators 候选 |
+| median_all_prefix_zero_rate | 0.09 | 验证前缀组零值率是否泛化 |
+| median_all_structural_all | 0.18 | valid 成本最低的上限观察方案 |
+
+## official test 结果
+
+| candidate_group | threshold | Precision | Recall | F2 | AP | FP | FN | Total Cost |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| median_all_structural_all | 0.18 | 0.4770 | 0.9680 | 0.8027 | 0.9055 | 398 | 12 | 9980 |
+| baseline_median_all | 0.16 | 0.4559 | 0.9653 | 0.7890 | 0.9086 | 432 | 13 | 10820 |
+| median_all_prefix_zero_rate | 0.09 | 0.3846 | 0.9733 | 0.7452 | 0.9093 | 584 | 10 | 10840 |
+| median_all_selected_missing_indicators_top30 | 0.30 | 0.5457 | 0.9387 | 0.8205 | 0.9085 | 293 | 23 | 14430 |
+
+## 泛化观察
+
+1. `median_all_structural_all` 在 official test 上 total cost 最低，为 9980，相比 baseline 的 10820 有一定下降；但它包含 60 个结构特征，仍然只能作为上限观察，不能直接写成最终主方案。
+2. `median_all_prefix_zero_rate` 在 test 上 FN 最低，为 10，recall 最高，为 0.9733；但 FP 增加到 584，导致 total cost 与 baseline 基本持平，说明前缀零值结构有召回信号，但误报代价较高。
+3. `median_all_selected_missing_indicators_top30` 在 valid 上表现较好，但 official test 上 FN 增加到 23，total cost 升到 14430，说明该方案泛化不足，不适合作为当前主候选。
+4. baseline_median_all 在 test 上仍然稳定，说明结构特征必须经过进一步筛选或正则化，不能只因为 valid 有提升就直接扩大特征集。
+
+## 下一步建议
+
+下一步不建议马上做大规模调参。更合理的方向是：
+
+1. 拆解 `structural_all` 中哪些结构特征真正贡献泛化收益；
+2. 对 prefix zero rate 和 sample_missing_rate 做更小规模组合；
+3. 保留 selected missing indicators 方向，但降低 Top 30 的数量，例如 Top 5 / Top 10 / Top 20；
+4. 在结构特征筛选稳定后，再做轻量 XGBoost 调参或模型解释性分析。
+

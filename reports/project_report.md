@@ -261,3 +261,22 @@ XGBoost + drop_high_missing_median + threshold 0.14
 
 这些结果只代表 valid 阶段的候选结论。Day 14 应选择 `median_all_structural_all` 和 `median_all_selected_missing_indicators_top30` 进入 official test 最终观察，不能把 valid 最优方案直接写成最终方案。
 
+## 17. 结构特征 official test 观察
+
+Day 14 对 Day 13 valid 阶段固定下来的少数候选方案做 official test 最终观察。候选方案和阈值都来自 Day 13 valid 结果，official test 不参与策略选择、结构特征规则拟合或阈值选择。
+
+| 候选方案 | valid threshold | Precision | Recall | F2 | AP | FP | FN | Total Cost |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| baseline_median_all | 0.16 | 0.4559 | 0.9653 | 0.7890 | 0.9086 | 432 | 13 | 10820 |
+| median_all_selected_missing_indicators_top30 | 0.30 | 0.5457 | 0.9387 | 0.8205 | 0.9085 | 293 | 23 | 14430 |
+| median_all_prefix_zero_rate | 0.09 | 0.3846 | 0.9733 | 0.7452 | 0.9093 | 584 | 10 | 10840 |
+| median_all_structural_all | 0.18 | 0.4770 | 0.9680 | 0.8027 | 0.9055 | 398 | 12 | 9980 |
+
+结构特征的泛化表现并不完全等同于 valid 排名：
+
+- `median_all_structural_all` 在 test 上 total cost 最低，但包含 60 个结构特征，仍然是上限观察方案，后续需要拆解贡献来源，不能直接作为最终主方案。
+- `median_all_prefix_zero_rate` 保持较高 recall，并把 FN 降到 10，但 FP 明显增加，导致 total cost 与 baseline 接近。
+- `median_all_selected_missing_indicators_top30` 在 valid 上较好，但 official test 上 FN 增加到 23，total cost 高于 baseline，说明 Top 30 missing indicators 泛化不足。
+
+因此，结构特征方向不是无效，而是需要进一步做更细的结构特征筛选：例如缩小 selected missing indicators 数量，拆解 `structural_all` 的组成，保留更稳定的样本级和前缀组统计，再进入轻量调参或解释性分析。
+
