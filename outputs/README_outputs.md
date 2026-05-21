@@ -235,3 +235,58 @@ Day 14 对 Day 13 valid 选出的结构特征候选方案做了 official test �
 - 不用 official test 反向选择策略、阈值或特征；
 - 不把 test 回溯结果写成生产最终结论；
 - 匿名字段和前缀不能解释为真实物理含义。
+
+## Day 15：Controlled XGBoost Tuning 输出说明
+
+Day15 是受控 XGBoost 调参阶段，只使用 official train 内部划分出的 `train_inner / valid`，不使用 official test 做参数、特征方案或阈值选择。本轮输出只能解释为 valid 阶段调参结果，不能写成 official test 结果或生产最终模型。
+
+### Day15 metrics 文件
+
+| 文件 | 作用 | 主要说明 |
+|---|---|---|
+| `outputs/metrics/day15_xgb_tuning_valid_trial_results.csv` | 每个 XGBoost trial 在 valid 上的最佳阈值结果 | 一行对应一个 trial，用于比较不同参数组合的 valid total cost |
+| `outputs/metrics/day15_xgb_tuning_valid_best_summary.csv` | 每个候选策略的 valid 最优 trial 摘要 | 用于决定 Day16 official test 观察候选 |
+| `outputs/metrics/day15_xgb_tuning_valid_threshold_metrics.csv` | 所有 trial 的完整 threshold grid 结果 | 可复查每个 trial 在不同阈值下的 precision、recall、F2、FP、FN 和 total cost |
+| `outputs/metrics/day15_xgb_tuning_refinement_summary.csv` | broad 与 refined 阶段对比 | 用于判断 refined 阶段是否相比 broad 阶段带来收益 |
+
+### Day15 tables 文件
+
+| 文件 | 作用 | 主要说明 |
+|---|---|---|
+| `outputs/tables/day15_xgb_tuning_candidate_metadata.csv` | 候选策略元数据 | 记录候选策略、原始特征数、结构特征数、删除字段数、实际运行 trial 数 |
+| `outputs/tables/day15_xgb_tuning_search_space.csv` | 搜索空间展开表 | 记录 broad/refined 阶段每个参数的搜索范围，便于复盘 |
+| `outputs/tables/day15_xgb_tuning_top_trials_by_strategy.csv` | 每个策略 broad 阶段 Top trials | refined search space 基于这些 valid 表现较好的 trial 构造 |
+
+### Day15 predictions 文件
+
+| 文件 | 作用 | 主要说明 |
+|---|---|---|
+| `outputs/predictions/day15_xgb_tuning_valid_best_predictions.csv` | 每个候选策略 valid best trial 的 valid 预测明细 | 包含 valid 上的 `y_true`、`y_proba`、`y_pred`、阈值和 trial id；不包含 official test 结果 |
+
+### Day15 figures 文件
+
+| 文件 | 作用 |
+|---|---|
+| `outputs/figures/day15_xgb_tuning_valid_cost_top20.png` | valid total cost 最低的 Top 20 trials |
+| `outputs/figures/day15_xgb_tuning_strategy_cost_compare.png` | 各候选策略 valid 最优 total cost 对比 |
+| `outputs/figures/day15_xgb_tuning_broad_vs_refined.png` | broad 与 refined 阶段最优 valid total cost 对比 |
+
+### Day15 当前实际运行结果
+
+配置文件中保留完整计划：每个候选策略 `broad=100`、`refined=50`。考虑本地交互运行耗时，本次实际运行使用环境变量覆盖为每个候选策略 `broad=20`、`refined=8`，共 3 个候选策略、84 个 trial。后续如果要更充分复盘，可以按 `config/config.yaml` 跑满规模。
+
+valid 上当前最佳结果：
+
+| candidate_strategy | stage | threshold | Precision | Recall | F2 | AP | FP | FN | Total Cost |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| `median_all_structural_all` | broad | 0.31 | 0.4422 | 0.9750 | 0.7857 | 0.8745 | 246 | 5 | 4960 |
+| `drop_high_missing_median` | broad | 0.19 | 0.3874 | 0.9800 | 0.7504 | 0.8649 | 310 | 4 | 5100 |
+| `baseline_median_all` | refined | 0.13 | 0.4080 | 0.9750 | 0.7629 | 0.8887 | 283 | 5 | 5330 |
+
+解释边界：
+
+- Day15 没有使用 official test；
+- valid 最优不是最终模型；
+- `median_all_structural_all` 是当前 valid 成本最低的 tuned 候选，但仍然包含较多结构特征，只适合进入 Day16 做 official test 观察；
+- `drop_high_missing_median` 是更轻量的缺失处理候选，也建议进入 Day16 作为对照；
+- 如果 Day16 official test 结果不稳定，不能回头用 test 反向修改 Day15 参数或 refined search space。

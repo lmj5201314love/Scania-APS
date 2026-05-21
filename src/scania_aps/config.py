@@ -70,6 +70,7 @@ class ScaniaConfig:
     validation_stratify: bool
     feature_ablation: dict[str, Any]
     advanced_models: dict[str, Any]
+    xgb_tuning: dict[str, Any]
 
 
 def _require_sections(config: dict[str, Any], sections: list[str]) -> None:
@@ -111,6 +112,7 @@ def _validate_config(raw_config: dict[str, Any], project_root: Path) -> None:
             "validation",
             "feature_ablation",
             "advanced_models",
+            "xgb_tuning",
         ],
     )
 
@@ -149,6 +151,21 @@ def _validate_config(raw_config: dict[str, Any], project_root: Path) -> None:
     if "random_forest" not in advanced_models or "xgboost" not in advanced_models:
         raise ValueError("advanced_models 必须包含 random_forest 和 xgboost 配置。")
 
+    xgb_tuning = raw_config["xgb_tuning"]
+    if xgb_tuning.get("tuning_mode") != "two_stage_random_search":
+        raise ValueError("xgb_tuning.tuning_mode 必须是 two_stage_random_search。")
+    if not xgb_tuning.get("candidate_strategies"):
+        raise ValueError("xgb_tuning 必须配置 candidate_strategies。")
+    for key in ["broad_trials_per_strategy", "refine_trials_per_strategy"]:
+        if int(xgb_tuning[key]) <= 0:
+            raise ValueError(f"xgb_tuning.{key} 必须大于 0。")
+    threshold_grid = xgb_tuning["threshold_grid"]
+    for key in ["start", "stop", "step"]:
+        if float(threshold_grid[key]) <= 0:
+            raise ValueError(f"xgb_tuning.threshold_grid.{key} 必须大于 0。")
+    if float(threshold_grid["start"]) >= float(threshold_grid["stop"]):
+        raise ValueError("xgb_tuning.threshold_grid.start 必须小于 stop。")
+
 
 def get_config(config_path: str | Path | None = None) -> ScaniaConfig:
     """读取并整理项目配置。"""
@@ -186,4 +203,5 @@ def get_config(config_path: str | Path | None = None) -> ScaniaConfig:
         validation_stratify=bool(raw_config["validation"]["stratify"]),
         feature_ablation=raw_config["feature_ablation"],
         advanced_models=raw_config["advanced_models"],
+        xgb_tuning=raw_config["xgb_tuning"],
     )

@@ -280,3 +280,36 @@ Day 14 对 Day 13 valid 阶段固定下来的少数候选方案做 official test
 
 因此，结构特征方向不是无效，而是需要进一步做更细的结构特征筛选：例如缩小 selected missing indicators 数量，拆解 `structural_all` 的组成，保留更稳定的样本级和前缀组统计，再进入轻量调参或解释性分析。
 
+
+## 18. Controlled XGBoost Tuning
+
+在 Day14 完成结构特征候选方案的 official test 观察后，项目进入 Day15 受控 XGBoost 调参阶段。本轮没有继续扩大结构特征组合，而是固定少数候选方案，观察 XGBoost 参数空间是否还能在 validation 流程下进一步降低业务成本。
+
+本轮不是全组合 GridSearch，而是 two-stage randomized search：
+
+1. broad 阶段覆盖较大的参数空间；
+2. refined 阶段只基于 broad 阶段在 valid 上表现较好的 Top trials 构造局部搜索空间；
+3. 每个 trial 都在 valid 上遍历阈值，并按 total cost、FN、recall、F2、PR-AUC 排序；
+4. official test 不参与 Day15 的参数选择、阈值选择或 refined search space 构造。
+
+配置文件保留完整计划规模：每个候选策略 broad 100 trials、refined 50 trials。考虑本地交互运行耗时，本次实际运行使用环境变量覆盖为 broad 20、refined 8，共 84 个 trial；后续如需更充分复盘，可离线跑满配置规模。
+
+本轮候选策略为：
+
+| candidate_strategy | 作用 |
+|---|---|
+| baseline_median_all | 判断调参本身相对结构特征是否更重要 |
+| median_all_structural_all | 当前结构特征上限观察方案 |
+| drop_high_missing_median | 较稳的轻量高缺失字段处理方案 |
+
+valid 最优结果：
+
+| candidate_strategy | stage | threshold | Precision | Recall | F2 | AP | FP | FN | Total Cost |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| median_all_structural_all | broad | 0.31 | 0.4422 | 0.9750 | 0.7857 | 0.8745 | 246 | 5 | 4960 |
+| drop_high_missing_median | broad | 0.19 | 0.3874 | 0.9800 | 0.7504 | 0.8649 | 310 | 4 | 5100 |
+| baseline_median_all | refined | 0.13 | 0.4080 | 0.9750 | 0.7629 | 0.8887 | 283 | 5 | 5330 |
+
+refined 阶段的收益并不稳定。只有 `baseline_median_all` 在 refined 阶段比 broad 阶段小幅降低 40 成本；`median_all_structural_all` 和 `drop_high_missing_median` 的最优 trial 均来自 broad 阶段。这说明在当前特征方案和 valid 划分下，XGBoost 参数调优能带来一定收益，但继续扩大随机搜索不一定比后续的解释性分析、SQL 业务深化和结构特征筛选更有价值。
+
+Day16 只能选择 Day15 valid 上最优的少数 tuned 方案进入 official test 观察。建议优先观察 `median_all_structural_all`，同时保留 `drop_high_missing_median` 作为更轻量的候选对照；不能把 Day15 valid 最优写成最终模型。

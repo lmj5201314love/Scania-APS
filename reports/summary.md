@@ -1036,3 +1036,33 @@ Day 14 只对 Day 13 valid 选出的少数候选方案做 official test 最终�
 3. 保留 selected missing indicators 方向，但降低 Top 30 的数量，例如 Top 5 / Top 10 / Top 20；
 4. 在结构特征筛选稳定后，再做轻量 XGBoost 调参或模型解释性分析。
 
+
+## Day 15：Controlled XGBoost Tuning
+
+Day 15 进入受控 XGBoost 调参阶段。本轮固定少数候选特征方案，只使用 official train 内部划分出的 `train_inner / valid`，不使用 official test 做参数、特征方案或阈值选择。调参目标以 valid total cost 为主，辅助观察 FN、recall、F2 和 PR-AUC。
+
+配置文件中保留了完整计划：每个候选策略 `broad=100`、`refined=50`。考虑本地交互运行耗时，本次实际运行使用环境变量覆盖为每个策略 `broad=20`、`refined=8`，共 3 个候选策略、84 个 trial。脚本仍支持后续离线跑满配置规模。
+
+本轮候选策略包括：
+
+| candidate_strategy | 说明 |
+|---|---|
+| baseline_median_all | 原始匿名数值特征 + median imputation |
+| median_all_structural_all | 原始匿名数值特征 + Day13 structural_all 结构特征 |
+| drop_high_missing_median | 删除极高缺失字段后 median imputation |
+
+valid 上的最佳结果如下：
+
+| candidate_strategy | stage | threshold | Precision | Recall | F2 | AP | FP | FN | Total Cost |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| median_all_structural_all | broad | 0.31 | 0.4422 | 0.9750 | 0.7857 | 0.8745 | 246 | 5 | 4960 |
+| drop_high_missing_median | broad | 0.19 | 0.3874 | 0.9800 | 0.7504 | 0.8649 | 310 | 4 | 5100 |
+| baseline_median_all | refined | 0.13 | 0.4080 | 0.9750 | 0.7629 | 0.8887 | 283 | 5 | 5330 |
+
+broad / refined 对比：
+
+- `baseline_median_all`：refined 从 broad 最优 5370 小幅降到 5330，收益有限。
+- `median_all_structural_all`：最优 trial 来自 broad，refined 最优成本为 5770，未超过 broad。
+- `drop_high_missing_median`：最优 trial 来自 broad，refined 最优成本为 5310，未超过 broad。
+
+调参相对 Day13 未调参 valid 结果有一定改善：`median_all_structural_all` 从 5850 降到 4960，`baseline_median_all` 从 6460 降到 5330。但本轮仍然只是 valid 阶段结果，不能写成最终模型。Day16 建议只选择 1-2 个 tuned 候选做 official test 观察：优先 `median_all_structural_all` 作为上限观察，同时保留 `drop_high_missing_median` 作为更轻量、较稳的缺失策略候选；`baseline_median_all` 可作为对照。

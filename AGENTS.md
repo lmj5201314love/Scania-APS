@@ -57,7 +57,7 @@ FN 代表真实 APS 故障被漏掉，业务风险高于 FP。因此本项目不
 
 ## 当前阶段优先级
 
-当前已完成 Day 1-7、项目清理、validation-based model selection、缺失值/特征工程消融实验、Day 10 字段级分布诊断、Day 11 前缀组结构信号分析、Day 12 结构特征方案设计和 Day 13 结构特征 valid-only 实验，进入 Day 14 结构特征候选方案 official test 最终观察阶段。当前重点是固定 Day 13 valid 选出的 baseline、selected missing indicators Top 30、prefix zero rate 和 structural_all 等少数候选方案，使用 valid best threshold 在 official test 上做一次最终观察；不允许根据 test 结果反向修改候选方案、结构规则或阈值。本阶段不做 GridSearch、不做 SHAP、不做 PCA、不加入 SVM、不解释匿名字段真实物理含义、不修改 raw 数据、不覆盖历史结果；成本函数继续从 cfg 读取。
+当前已完成 Day 1-7、项目清理、validation-based model selection、缺失值/特征工程消融实验、Day 10 字段级分布诊断、Day 11 前缀组结构信号分析、Day 12 结构特征方案设计、Day 13 结构特征 valid-only 实验和 Day 14 official test 最终观察，进入 Day 15 Controlled XGBoost Tuning 阶段。当前重点是固定少数候选特征方案，在 train_inner 上训练 XGBoost，并只在 valid 上选择参数和阈值；official test 不参与 Day15 调参、特征方案选择或 refined search space 构造。本阶段不做全组合 GridSearch、不做 SHAP、不做 PCA、不加入 SVM / LightGBM / CatBoost、不解释匿名字段真实物理含义、不修改 raw 数据、不覆盖历史结果；成本函数继续从 cfg 读取。Day15 valid 最优只能作为 Day16 official test 观察候选，不能写成最终模型。
 
 ## Agent skills
 

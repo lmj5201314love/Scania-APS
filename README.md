@@ -217,3 +217,9 @@ docs/project_structure.md
 > Scania APS 预测性维护项目：基于 60,000 条训练样本和 16,000 条测试样本，处理高维匿名工业特征、结构性缺失和极度类别不平衡问题；
 > 构建 Logistic / Random Forest / XGBoost 模型，并基于 FP=10、FN=500 的业务成本进行阈值优化；
 > 将测试集回溯 total cost 从 naive baseline 的 187,500 降至 8,640，同时输出风险分层和维修优先级建议。
+
+## 当前增强阶段：Controlled XGBoost Tuning
+
+项目已完成 Day10/11 字段级与前缀组结构信号诊断、Day12 结构特征设计、Day13 结构特征 valid-only 实验和 Day14 official test 最终观察。当前进入 Day15：Controlled XGBoost Tuning。
+
+Day15 只使用 official train 内部划分的 `train_inner / valid`，不使用 official test 做参数、特征方案或阈值选择。本轮采用 two-stage randomized search，而不是全组合 GridSearch；valid 最优结果只用于筛选 Day16 official test 观察候选，不能写成最终模型。

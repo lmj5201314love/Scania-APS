@@ -210,3 +210,28 @@ Day 14 新增本地输出：
 
 这些输出只用于观察 Day 13 valid 候选方案在 official test 上的泛化情况，不能用于反向修改 Day 13 候选组或阈值。
 
+
+## Day 15 Controlled XGBoost Tuning 补充
+
+Day 15 新增文件和输出如下：
+
+- `src/scania_aps/models/xgb_tuning.py`：受控 XGBoost 调参模块，支持参数随机采样、broad/refined 搜索空间构造、候选策略特征准备、trial 级阈值评估和 valid best summary 汇总。
+- `scripts/13_xgb_tuning_valid_experiments.py`：从项目根目录运行 Day15 two-stage randomized search。脚本只使用 `train_inner / valid`，不使用 official test。
+- `notebooks/15_xgb_tuning_valid_experiments.ipynb`：记录 Day15 调参目标、候选策略、broad/refined 思路和输出复盘方式。
+- `tests/test_xgb_tuning_schema.py`：使用小型模拟数据测试参数采样、refined search space 构造、特征准备和 trial 结果 schema。
+
+Day15 新增本地输出：
+
+- `outputs/metrics/day15_xgb_tuning_valid_trial_results.csv`：每个 trial 在 valid 上的最佳阈值结果。
+- `outputs/metrics/day15_xgb_tuning_valid_best_summary.csv`：每个候选策略的 valid 最优 trial 摘要。
+- `outputs/metrics/day15_xgb_tuning_valid_threshold_metrics.csv`：所有 trial 的完整 threshold grid 结果。
+- `outputs/metrics/day15_xgb_tuning_refinement_summary.csv`：broad 与 refined 阶段对比。
+- `outputs/tables/day15_xgb_tuning_candidate_metadata.csv`：候选策略特征数量、结构特征数量、运行 trial 数等元数据。
+- `outputs/tables/day15_xgb_tuning_search_space.csv`：broad/refined 搜索空间展开表。
+- `outputs/tables/day15_xgb_tuning_top_trials_by_strategy.csv`：每个候选策略用于 refined 阶段的 top trials。
+- `outputs/predictions/day15_xgb_tuning_valid_best_predictions.csv`：每个候选策略 valid best trial 的 valid 预测明细。
+- `outputs/figures/day15_xgb_tuning_valid_cost_top20.png`：valid cost Top 20 trial 图。
+- `outputs/figures/day15_xgb_tuning_strategy_cost_compare.png`：候选策略最优 valid cost 对比图。
+- `outputs/figures/day15_xgb_tuning_broad_vs_refined.png`：broad 与 refined 阶段最优成本对比图。
+
+这些输出只代表 valid 阶段调参结果，不能被解释为 official test 或生产最终结论。Day16 才能对少数 tuned 候选方案做 official test 观察。
