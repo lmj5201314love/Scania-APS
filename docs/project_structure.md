@@ -235,3 +235,23 @@ Day15 新增本地输出：
 - `outputs/figures/day15_xgb_tuning_broad_vs_refined.png`：broad 与 refined 阶段最优成本对比图。
 
 这些输出只代表 valid 阶段调参结果，不能被解释为 official test 或生产最终结论。Day16 才能对少数 tuned 候选方案做 official test 观察。
+
+## Day 16 Tuned XGBoost Official Test Evaluation 补充
+
+Day16 新增文件和输出如下：
+
+- `src/scania_aps/models/xgb_tuning_test_evaluation.py`：读取 Day15 valid best summary 中的固定参数和 threshold，在 official test 上评估 tuned XGBoost candidates。
+- `scripts/14_xgb_tuning_test_evaluation.py`：从项目根目录运行 Day16 official test 观察；不重新调参、不重新选阈值。
+- `notebooks/16_xgb_tuning_test_evaluation.ipynb`：记录 Day16 目标、固定候选方案、official test 结果、valid/test 对比和后续建议。
+- `tests/test_xgb_tuning_test_evaluation_schema.py`：使用小型模拟数据测试 Day16 输出 schema、阈值来源和参数读取逻辑。
+
+Day16 新增本地输出：
+
+- `outputs/metrics/day16_xgb_tuning_test_results.csv`
+- `outputs/metrics/day16_xgb_tuning_valid_test_compare.csv`
+- `outputs/predictions/day16_xgb_tuning_test_predictions.csv`
+- `outputs/tables/day16_xgb_tuning_test_metadata.csv`
+- `outputs/figures/day16_xgb_tuning_test_cost_compare.png`
+- `outputs/figures/day16_xgb_tuning_valid_vs_test_cost.png`
+
+这些输出只用于观察 Day15 tuned candidates 在 official test 上的泛化表现，不能用于反向修改 Day15 参数、阈值或候选特征方案。

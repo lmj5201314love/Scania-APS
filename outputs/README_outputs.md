@@ -290,3 +290,37 @@ valid 上当前最佳结果：
 - `median_all_structural_all` 是当前 valid 成本最低的 tuned 候选，但仍然包含较多结构特征，只适合进入 Day16 做 official test 观察；
 - `drop_high_missing_median` 是更轻量的缺失处理候选，也建议进入 Day16 作为对照；
 - 如果 Day16 official test 结果不稳定，不能回头用 test 反向修改 Day15 参数或 refined search space。
+
+## Day 16：Tuned XGBoost Official Test Evaluation
+
+Day16 固定 Day15 valid 上选出的 XGBoost 参数和 threshold，在 official test 上做最终观察。本轮不重新调参、不重新选 threshold，也不根据 official test 结果反向修改 Day15。
+
+### metrics
+
+| 文件 | 说明 |
+|---|---|
+| `outputs/metrics/day16_xgb_tuning_test_results.csv` | Day15 tuned candidates 在 official test 上的最终观察结果，包括 precision、recall、F2、AP、FP、FN 和 total_cost。 |
+| `outputs/metrics/day16_xgb_tuning_valid_test_compare.csv` | Day15 valid best 与 Day16 official test 的对比表，用于观察调参收益是否泛化。 |
+
+### predictions
+
+| 文件 | 说明 |
+|---|---|
+| `outputs/predictions/day16_xgb_tuning_test_predictions.csv` | 3 个 tuned candidates 在 official test 上的预测明细。该文件只用于最终观察，不能用于反向调参。 |
+
+### tables
+
+| 文件 | 说明 |
+|---|---|
+| `outputs/tables/day16_xgb_tuning_test_metadata.csv` | Day16 每个候选方案的参数来源、阈值来源、特征数量、删除字段、结构特征数量等元数据。 |
+
+### figures
+
+| 文件 | 说明 |
+|---|---|
+| `outputs/figures/day16_xgb_tuning_test_cost_compare.png` | Day16 tuned candidates 的 official test total cost 对比。 |
+| `outputs/figures/day16_xgb_tuning_valid_vs_test_cost.png` | Day15 valid cost 与 Day16 official test cost 对比。 |
+
+### 当前结论
+
+Day16 tuned candidates 的 official test 成本没有超过 Day14 未调参 `median_all_structural_all`。因此 Day15 的低 valid cost 不应写成最终模型效果，后续应转向 SQL 深化、模型解释性分析和 README / 报告收尾。

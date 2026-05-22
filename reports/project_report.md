@@ -313,3 +313,33 @@ valid 最优结果：
 refined 阶段的收益并不稳定。只有 `baseline_median_all` 在 refined 阶段比 broad 阶段小幅降低 40 成本；`median_all_structural_all` 和 `drop_high_missing_median` 的最优 trial 均来自 broad 阶段。这说明在当前特征方案和 valid 划分下，XGBoost 参数调优能带来一定收益，但继续扩大随机搜索不一定比后续的解释性分析、SQL 业务深化和结构特征筛选更有价值。
 
 Day16 只能选择 Day15 valid 上最优的少数 tuned 方案进入 official test 观察。建议优先观察 `median_all_structural_all`，同时保留 `drop_high_missing_median` 作为更轻量的候选对照；不能把 Day15 valid 最优写成最终模型。
+
+## 19. Tuned XGBoost Official Test Evaluation
+
+Day15 的 Controlled XGBoost Tuning 只在 `train_inner / valid` 上完成参数和阈值选择。Day16 固定 Day15 选出的参数与阈值，在 official test 上做一次最终观察。本轮不重新调参、不重新选阈值，也不根据 official test 结果回头修改 Day15。
+
+Day16 评估 3 个 tuned candidates：
+
+| candidate_strategy | threshold | trial_id | stage |
+|---|---:|---|---|
+| median_all_structural_all | 0.31 | median_all_structural_all_broad_009 | broad |
+| drop_high_missing_median | 0.19 | drop_high_missing_median_broad_007 | broad |
+| baseline_median_all | 0.13 | baseline_median_all_refined_002 | refined |
+
+official test 结果：
+
+| candidate_strategy | Precision | Recall | F2 | AP | FP | FN | Total Cost |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| drop_high_missing_median | 0.4891 | 0.9600 | 0.8050 | 0.9121 | 376 | 15 | 11260 |
+| baseline_median_all | 0.5129 | 0.9573 | 0.8159 | 0.9218 | 341 | 16 | 11410 |
+| median_all_structural_all | 0.5538 | 0.9467 | 0.8291 | 0.9133 | 286 | 20 | 12860 |
+
+与 Day15 valid 对比，三个 tuned 方案的 official test total cost 都明显上升，主要原因是 FN 增加：
+
+- `drop_high_missing_median`：valid FN 4，上升到 test FN 15，成本从 5100 上升到 11260。
+- `baseline_median_all`：valid FN 5，上升到 test FN 16，成本从 5330 上升到 11410。
+- `median_all_structural_all`：valid FN 5，上升到 test FN 20，成本从 4960 上升到 12860。
+
+与 Day14 未调参结果相比，Day16 tuned 方案没有带来更低的 official test 成本。Day14 未调参 `median_all_structural_all` 的 official test cost 为 9980，仍低于本轮 tuned candidates 的最佳结果 11260。这说明继续扩大 XGBoost 参数搜索的边际收益有限，并且 valid 上的低成本组合不一定能稳定泛化到 official test。
+
+因此，项目不应继续把主线放在调参上。更合理的后续方向是：深化 SQL 业务分析、做模型解释性分析、整理最终 README 和面试讲述，同时明确当前模型结果仍是公开数据集上的离线分析，不是生产环境最终阈值。

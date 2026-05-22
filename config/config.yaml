@@ -1,6 +1,6 @@
 project:
   name: scania_aps_predictive_maintenance
-  stage: day15_controlled_xgb_tuning
+  stage: day16_tuned_xgb_official_test_evaluation
 
 paths:
   train_raw: data/raw/aps_failure_training_set.csv

@@ -1066,3 +1066,39 @@ broad / refined 对比：
 - `drop_high_missing_median`：最优 trial 来自 broad，refined 最优成本为 5310，未超过 broad。
 
 调参相对 Day13 未调参 valid 结果有一定改善：`median_all_structural_all` 从 5850 降到 4960，`baseline_median_all` 从 6460 降到 5330。但本轮仍然只是 valid 阶段结果，不能写成最终模型。Day16 建议只选择 1-2 个 tuned 候选做 official test 观察：优先 `median_all_structural_all` 作为上限观察，同时保留 `drop_high_missing_median` 作为更轻量、较稳的缺失策略候选；`baseline_median_all` 可作为对照。
+
+## Day 16：Tuned XGBoost Official Test Evaluation
+
+Day 16 只对 Day 15 在 valid 上选出的 tuned XGBoost 候选方案做 official test 最终观察。本轮固定 Day15 的参数和 threshold，不在 official test 上重新搜索、不重新调阈值，也不根据 test 结果反向修改 Day15。
+
+评估的 tuned candidates：
+
+| candidate_strategy | Day15 threshold | Day15 best trial | Day15 stage |
+|---|---:|---|---|
+| median_all_structural_all | 0.31 | median_all_structural_all_broad_009 | broad |
+| drop_high_missing_median | 0.19 | drop_high_missing_median_broad_007 | broad |
+| baseline_median_all | 0.13 | baseline_median_all_refined_002 | refined |
+
+official test 结果如下：
+
+| candidate_strategy | threshold | Precision | Recall | F2 | AP | FP | FN | Total Cost |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| drop_high_missing_median | 0.19 | 0.4891 | 0.9600 | 0.8050 | 0.9121 | 376 | 15 | 11260 |
+| baseline_median_all | 0.13 | 0.5129 | 0.9573 | 0.8159 | 0.9218 | 341 | 16 | 11410 |
+| median_all_structural_all | 0.31 | 0.5538 | 0.9467 | 0.8291 | 0.9133 | 286 | 20 | 12860 |
+
+valid 到 official test 的变化：
+
+| candidate_strategy | valid cost | test cost | cost delta | valid FN | test FN |
+|---|---:|---:|---:|---:|---:|
+| drop_high_missing_median | 5100 | 11260 | +6160 | 4 | 15 |
+| baseline_median_all | 5330 | 11410 | +6080 | 5 | 16 |
+| median_all_structural_all | 4960 | 12860 | +7900 | 5 | 20 |
+
+结论：
+
+1. Day15 tuned 方案在 valid 上成本较低，但 official test 上没有稳定泛化到同等成本水平。
+2. tuned `drop_high_missing_median` 是 Day16 test 成本最低的 tuned 方案，total cost 为 11260，但仍高于 Day14 未调参 `median_all_structural_all` 的 9980。
+3. tuned `median_all_structural_all` 在 valid 上最优，但 test 上 FN 增加到 20，total cost 上升到 12860，说明该 tuned 参数组合存在明显泛化落差。
+4. 调参并没有带来比 Day14 未调参结构特征方案更好的 official test 成本，因此不建议继续扩大 XGBoost 随机搜索。
+5. 下一步更适合转向 SQL 业务深化、模型解释性分析和 README / 项目报告最终整理，而不是继续追逐参数。
