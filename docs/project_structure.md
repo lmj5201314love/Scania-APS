@@ -255,3 +255,32 @@ Day16 新增本地输出：
 - `outputs/figures/day16_xgb_tuning_valid_vs_test_cost.png`
 
 这些输出只用于观察 Day15 tuned candidates 在 official test 上的泛化表现，不能用于反向修改 Day15 参数、阈值或候选特征方案。
+
+## Day 17 OOF 阈值稳定性与 Bin Projection 补充
+
+Day17 新增文件和输出如下：
+
+- `src/scania_aps/features/bin_projection.py`：匿名 histogram/bin-like 前缀组投影特征工具，支持 prefix/bin index 解析、bin group membership fit、行级 projection 特征 transform 和 metadata 输出。
+- `src/scania_aps/models/oof_threshold_experiments.py`：OOF / Repeated CV 阈值选择实验模块，支持 cost_min、Recall floor、FN floor 和 OOF 稳定性汇总。
+- `scripts/15_oof_recall_floor_bin_projection.py`：从项目根目录运行 Day17 实验，只使用 official train，不使用 official test。
+- `notebooks/17_oof_recall_floor_bin_projection.ipynb`：记录 Day17 实验边界、OOF 逻辑、Recall/FN floor、bin projection 和 Day18 候选建议。
+- `tests/test_bin_projection.py`：bin projection 解析、排序、NaN/全零安全处理和不修改原始 DataFrame 的单元测试。
+- `tests/test_oof_threshold_experiments_schema.py`：OOF split 和带约束 threshold selection 的轻量 schema 测试。
+
+Day17 新增本地输出：
+
+- `outputs/metrics/day17_oof_threshold_metrics.csv`
+- `outputs/metrics/day17_oof_best_threshold_summary.csv`
+- `outputs/metrics/day17_oof_stability_summary.csv`
+- `outputs/metrics/day17_oof_strategy_compare.csv`
+- `outputs/predictions/day17_oof_raw_predictions.csv`
+- `outputs/predictions/day17_oof_averaged_predictions.csv`
+- `outputs/tables/day17_oof_fold_summary.csv`
+- `outputs/tables/day17_bin_projection_metadata.csv`
+- `outputs/tables/day17_oof_candidate_metadata.csv`
+- `outputs/figures/day17_oof_cost_threshold_curve.png`
+- `outputs/figures/day17_oof_recall_threshold_curve.png`
+- `outputs/figures/day17_oof_strategy_cost_compare.png`
+- `outputs/figures/day17_oof_threshold_rule_compare.png`
+
+这些输出只代表 official train 内部 OOF 分析结果，不应解释为 official test 或生产环境最终结论。

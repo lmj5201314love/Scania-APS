@@ -343,3 +343,19 @@ official test 结果：
 与 Day14 未调参结果相比，Day16 tuned 方案没有带来更低的 official test 成本。Day14 未调参 `median_all_structural_all` 的 official test cost 为 9980，仍低于本轮 tuned candidates 的最佳结果 11260。这说明继续扩大 XGBoost 参数搜索的边际收益有限，并且 valid 上的低成本组合不一定能稳定泛化到 official test。
 
 因此，项目不应继续把主线放在调参上。更合理的后续方向是：深化 SQL 业务分析、做模型解释性分析、整理最终 README 和面试讲述，同时明确当前模型结果仍是公开数据集上的离线分析，不是生产环境最终阈值。
+
+## 20. OOF Threshold Selection and Histogram Bin Projection
+
+Day15/16 暴露出一个重要问题：单一 validation split 上选出的 XGBoost 参数和阈值，在 official test 上并没有稳定泛化。Day17 因此转向 OOF 阈值稳定性分析，而不是继续扩大随机搜索。
+
+本轮只使用 official train 内部数据。每个 fold 内，median imputer、structural feature builder 和 bin projection builder 都只在 fold_train 上 fit，fold_valid 只 transform。official test 完全不参与 Day17 的阈值、参数或特征选择。
+
+Day17 同时加入 Recall/FN floor 业务约束。`cost_min` 规则直接选择 OOF total cost 最低阈值；`recall_floor_975`、`recall_floor_980`、`fn_floor_20` 和 `fn_floor_25` 则用于观察在更严格漏报约束下，模型需要付出多少 FP 和 total cost 代价。
+
+Histogram/bin projection 的依据是：UCI APS 数据说明中提到部分匿名特征具有 histogram bin 结构。项目没有解释这些前缀的真实物理含义，只把 Day11 中识别出的多字段前缀组 `ag`、`ay`、`az`、`ba`、`cn`、`cs`、`ee` 作为匿名结构候选，并生成 sum、mean、std、max、nonzero_count、zero_rate、weighted_mean_bin、tail_ratio 和 peak_bin_index 等行级聚合特征。
+
+本地实际运行使用 `5 folds x 1 repeat`。OOF `cost_min` 下，`median_all_structural_all_plus_bin_projection` 的 total cost 为 39140，略低于 `median_all_structural_all` 的 39400 和 `baseline_median_all` 的 39910。这个结果说明 bin projection 可能有补充信号，但提升幅度很小，不能写成显著突破。单独 `median_all_bin_projection` 的 total cost 为 40550，没有优于 baseline。
+
+Recall/FN floor 的观察显示：强行压低 FN 或提高 recall 会显著增加 FP。例如 `recall_floor_975` 下 `median_all_structural_all` 的 FN 为 25、recall 为 0.9750，但 total cost 上升到 50090。这说明 Recall/FN floor 是业务约束，不是单纯模型分数优化，需要结合维修容量和误报成本解释。
+
+Day18 只应固定 Day17 OOF 中少数候选方案到 official test 做最终观察，不能根据 test 结果反向修改 Day17 的阈值或规则。建议观察：`median_all_structural_all_plus_bin_projection` 的 cost_min 方案，以及 `median_all_structural_all` 的 recall_floor_975 方案。

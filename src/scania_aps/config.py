@@ -71,6 +71,7 @@ class ScaniaConfig:
     feature_ablation: dict[str, Any]
     advanced_models: dict[str, Any]
     xgb_tuning: dict[str, Any]
+    oof_threshold: dict[str, Any]
 
 
 def _require_sections(config: dict[str, Any], sections: list[str]) -> None:
@@ -113,6 +114,7 @@ def _validate_config(raw_config: dict[str, Any], project_root: Path) -> None:
             "feature_ablation",
             "advanced_models",
             "xgb_tuning",
+            "oof_threshold",
         ],
     )
 
@@ -165,6 +167,18 @@ def _validate_config(raw_config: dict[str, Any], project_root: Path) -> None:
             raise ValueError(f"xgb_tuning.threshold_grid.{key} 必须大于 0。")
     if float(threshold_grid["start"]) >= float(threshold_grid["stop"]):
         raise ValueError("xgb_tuning.threshold_grid.start 必须小于 stop。")
+    oof_threshold = raw_config["oof_threshold"]
+    cv_config = oof_threshold["cv"]
+    if int(cv_config["n_splits"]) < 2:
+        raise ValueError("oof_threshold.cv.n_splits must be >= 2.")
+    if int(cv_config["n_repeats"]) < 1:
+        raise ValueError("oof_threshold.cv.n_repeats must be >= 1.")
+    oof_grid = oof_threshold["threshold_grid"]
+    for key in ["start", "stop", "step"]:
+        if float(oof_grid[key]) <= 0:
+            raise ValueError(f"oof_threshold.threshold_grid.{key} must be > 0.")
+    if float(oof_grid["start"]) >= float(oof_grid["stop"]):
+        raise ValueError("oof_threshold.threshold_grid.start must be smaller than stop.")
 
 
 def get_config(config_path: str | Path | None = None) -> ScaniaConfig:
@@ -204,4 +218,5 @@ def get_config(config_path: str | Path | None = None) -> ScaniaConfig:
         feature_ablation=raw_config["feature_ablation"],
         advanced_models=raw_config["advanced_models"],
         xgb_tuning=raw_config["xgb_tuning"],
+        oof_threshold=raw_config["oof_threshold"],
     )

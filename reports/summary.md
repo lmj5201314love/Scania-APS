@@ -1102,3 +1102,42 @@ valid 到 official test 的变化：
 3. tuned `median_all_structural_all` 在 valid 上最优，但 test 上 FN 增加到 20，total cost 上升到 12860，说明该 tuned 参数组合存在明显泛化落差。
 4. 调参并没有带来比 Day14 未调参结构特征方案更好的 official test 成本，因此不建议继续扩大 XGBoost 随机搜索。
 5. 下一步更适合转向 SQL 业务深化、模型解释性分析和 README / 项目报告最终整理，而不是继续追逐参数。
+
+## Day 17：OOF 阈值稳定性与 Bin Projection 实验
+
+Day 17 的动机来自 Day 15/16：单一 `train_inner / valid` split 上调出的 XGBoost 参数和阈值在 official test 上没有稳定泛化。因此本轮不再扩大调参，而是只使用 official train 内部的 OOF 预测来做阈值选择，并加入 Recall/FN floor 业务约束，同时验证匿名 histogram/bin-like 前缀组投影特征是否提供额外信号。
+
+本轮配置文件保留默认 `5 folds x 2 repeats`，但为了控制本地交互运行时间，实际运行使用了配置允许的运行时降级：`5 folds x 1 repeat`。本轮没有使用 official test，没有重新调参，没有修改 `data/raw/`。
+
+参与 OOF 实验的候选策略包括：
+
+| candidate_strategy | 说明 |
+|---|---|
+| baseline_median_all | 原始匿名数值特征 + median imputation |
+| median_all_structural_all | 原始特征 + Day13 structural_all 结构特征 |
+| median_all_bin_projection | 原始特征 + 匿名 bin projection 特征 |
+| median_all_structural_all_plus_bin_projection | 原始特征 + structural_all + bin projection |
+
+OOF `cost_min` 规则下的结果如下：
+
+| candidate_strategy | threshold | Precision | Recall | F2 | AP | FP | FN | Total Cost |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| median_all_structural_all_plus_bin_projection | 0.11 | 0.3285 | 0.9610 | 0.6939 | 0.8703 | 1964 | 39 | 39140 |
+| median_all_structural_all | 0.09 | 0.3013 | 0.9660 | 0.6703 | 0.8711 | 2240 | 34 | 39400 |
+| baseline_median_all | 0.12 | 0.3307 | 0.9590 | 0.6949 | 0.8691 | 1941 | 41 | 39910 |
+| median_all_bin_projection | 0.10 | 0.3184 | 0.9600 | 0.6842 | 0.8701 | 2055 | 40 | 40550 |
+
+关键观察：
+
+1. `median_all_structural_all_plus_bin_projection` 在 OOF `cost_min` 下成本最低，相比 `median_all_structural_all` 只小幅下降 260，说明 bin projection 有轻微信号，但当前不是压倒性提升。
+2. 单独 `median_all_bin_projection` 没有优于 baseline，说明 bin projection 更像结构补充信号，而不是可单独替代原始特征或 structural_all 的主线方案。
+3. Recall/FN floor 可以降低 FN 或提高 recall，但代价是 FP 明显上升，total cost 大幅增加。例如 `recall_floor_975` 下 `median_all_structural_all` 选择 threshold=0.03，FN=25，recall=0.9750，但 total cost 上升到 50090。
+4. `fn_floor_20` / `recall_floor_980` 并非所有策略都能满足。对 `median_all_structural_all_plus_bin_projection` 来说，相关强约束在本次 OOF 结果中没有可行阈值满足，因此结果表中 `constraint_satisfied=False`，不能误读为满足了约束。
+5. OOF 阈值选择比单一 valid split 更稳健，但 Day17 结果仍然只来自 official train 内部，不是 official test 结论。
+
+Day18 建议只选择少数候选做 official test 最终观察：
+
+- `median_all_structural_all_plus_bin_projection` + `cost_min` threshold=0.11：用于观察 structural_all + bin projection 的 OOF 最低成本组合是否泛化。
+- `median_all_structural_all` + `recall_floor_975` threshold=0.03：用于观察显式高 recall 业务约束在 official test 上的代价。
+
+如果 Day18 仍然没有稳定改善，应停止继续追逐模型和阈值，转向 histogram/bin 结构深化、模型解释性分析、SQL 业务深化和最终 README / 报告收尾。

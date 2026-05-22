@@ -324,3 +324,42 @@ Day16 固定 Day15 valid 上选出的 XGBoost 参数和 threshold，在 official
 ### 当前结论
 
 Day16 tuned candidates 的 official test 成本没有超过 Day14 未调参 `median_all_structural_all`。因此 Day15 的低 valid cost 不应写成最终模型效果，后续应转向 SQL 深化、模型解释性分析和 README / 报告收尾。
+
+## Day 17：OOF Threshold Selection and Bin Projection 输出说明
+
+Day17 输出只来自 official train 内部的 OOF / Repeated CV 实验，不包含 official test 结果，不能解释为最终模型效果。
+
+### metrics
+
+| 文件 | 说明 |
+|---|---|
+| `outputs/metrics/day17_oof_threshold_metrics.csv` | 每个 candidate_strategy 在 OOF averaged prediction 上的完整 threshold grid 指标。 |
+| `outputs/metrics/day17_oof_best_threshold_summary.csv` | 每个 candidate_strategy 在 `cost_min`、Recall floor 和 FN floor 规则下选出的 OOF 阈值摘要。 |
+| `outputs/metrics/day17_oof_stability_summary.csv` | 在所选阈值下，不同 fold/repeat 的 cost、FN、recall、precision、F2 波动统计。 |
+| `outputs/metrics/day17_oof_strategy_compare.csv` | 便于横向比较不同策略与不同阈值规则的摘要表。 |
+
+### predictions
+
+| 文件 | 说明 |
+|---|---|
+| `outputs/predictions/day17_oof_raw_predictions.csv` | 每个 repeat/fold 的 OOF 预测明细，同一样本在不同 repeat 中可能有多条预测。 |
+| `outputs/predictions/day17_oof_averaged_predictions.csv` | 同一样本跨 repeats 取平均后的 OOF 预测，用于最终 OOF threshold selection。 |
+
+### tables
+
+| 文件 | 说明 |
+|---|---|
+| `outputs/tables/day17_oof_fold_summary.csv` | 每个 candidate_strategy、repeat、fold 的样本量和正类数量。 |
+| `outputs/tables/day17_bin_projection_metadata.csv` | bin projection 使用的匿名 prefix、源字段、bin 数量和生成特征名。 |
+| `outputs/tables/day17_oof_candidate_metadata.csv` | 每个 OOF fold 的候选策略特征数量、结构特征数量和 bin projection 特征数量。 |
+
+### figures
+
+| 文件 | 说明 |
+|---|---|
+| `outputs/figures/day17_oof_cost_threshold_curve.png` | OOF threshold 与 total cost 曲线。 |
+| `outputs/figures/day17_oof_recall_threshold_curve.png` | OOF threshold 与 recall 曲线。 |
+| `outputs/figures/day17_oof_strategy_cost_compare.png` | `cost_min` 规则下不同策略的 OOF total cost 对比。 |
+| `outputs/figures/day17_oof_threshold_rule_compare.png` | 不同 Recall/FN floor 规则下的 OOF total cost 对比。 |
+
+本次本地运行实际使用 `5 folds x 1 repeat`，配置文件仍保留默认 `5 folds x 2 repeats`。若后续离线复盘可按配置跑满更大规模。

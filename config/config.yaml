@@ -1,6 +1,6 @@
 project:
   name: scania_aps_predictive_maintenance
-  stage: day16_tuned_xgb_official_test_evaluation
+  stage: day17_oof_recall_floor_bin_projection
 
 paths:
   train_raw: data/raw/aps_failure_training_set.csv
@@ -152,3 +152,75 @@ xgb_tuning:
       - recall
       - f2
       - average_precision
+
+oof_threshold:
+  stage: day17_oof_recall_floor_bin_projection
+  random_state: 42
+
+  cv:
+    n_splits: 5
+    n_repeats: 2
+    stratified: true
+    shuffle: true
+
+  allow_runtime_downgrade:
+    enabled: true
+    min_n_splits: 5
+    min_n_repeats: 1
+
+  threshold_grid:
+    start: 0.01
+    stop: 0.99
+    step: 0.01
+
+  threshold_selection_rules:
+    - cost_min
+    - recall_floor_975
+    - recall_floor_980
+    - fn_floor_20
+    - fn_floor_25
+
+  recall_floors:
+    recall_floor_975: 0.975
+    recall_floor_980: 0.980
+
+  fn_floors:
+    fn_floor_20: 20
+    fn_floor_25: 25
+
+  candidate_strategies:
+    - baseline_median_all
+    - median_all_structural_all
+    - median_all_bin_projection
+    - median_all_structural_all_plus_bin_projection
+
+  model:
+    name: xgboost
+    use_day14_like_params: true
+    objective: binary:logistic
+    eval_metric: aucpr
+    tree_method: hist
+    n_jobs: -1
+
+  bin_projection:
+    enabled: true
+    candidate_prefix_groups:
+      - ag
+      - ay
+      - az
+      - ba
+      - cn
+      - cs
+      - ee
+    add_features:
+      - sum
+      - mean
+      - std
+      - max
+      - nonzero_count
+      - zero_rate
+      - weighted_mean_bin
+      - tail_ratio
+      - peak_bin_index
+    tail_bin_count: 3
+    keep_original_bin_columns: true

@@ -223,3 +223,7 @@ docs/project_structure.md
 项目已完成 Day10/11 字段级与前缀组结构信号诊断、Day12 结构特征设计、Day13 结构特征 valid-only 实验和 Day14 official test 最终观察。当前进入 Day15：Controlled XGBoost Tuning。
 
 Day15 只使用 official train 内部划分的 `train_inner / valid`，不使用 official test 做参数、特征方案或阈值选择。本轮采用 two-stage randomized search，而不是全组合 GridSearch；valid 最优结果只用于筛选 Day16 official test 观察候选，不能写成最终模型。
+
+## 当前增强阶段：Day17 OOF Threshold Selection
+
+Day16 显示单一 validation split 上调出的 XGBoost 参数和阈值没有稳定泛化到 official test。项目当前进入 Day17：引入 OOF / Repeated CV 阈值选择与 Recall/FN floor，用于缓解单一 validation split 阈值不稳定问题，并验证匿名 histogram/bin-like 前缀组投影特征是否提供额外结构信号。Day17 不使用 official test，不重新做 GridSearch，不做 SHAP / PCA / SVM / LightGBM / CatBoost。
