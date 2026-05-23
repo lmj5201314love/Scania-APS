@@ -1,0 +1,4 @@
+﻿model_name,strategy,threshold,precision,recall,f1,f2,average_precision,tn,fp,fn,tp,false_positive_cost,false_negative_cost,total_cost,base_candidate_strategy,selection_dataset,threshold_selection_rule,constraint_satisfied
+xgboost_oof_base,median_all_structural_all,0.09,0.30131004366812225,0.966,0.4593437945791726,0.6702747710241466,0.8710981135618879,56760,2240,34,966,10,500,39400,median_all_structural_all,oof_averaged,cost_min,True
+xgboost_oof_base,median_with_selected_missing_indicators,0.07,0.27577392786140303,0.971,0.42955098429550986,0.6455258609227497,0.869067662482292,56450,2550,29,971,10,500,40000,median_with_selected_missing_indicators,oof_averaged,cost_min,True
+xgboost_oof_base,median_all_prefix_zero_rate,0.14,0.3487010611050128,0.953,0.5105813019019555,0.7077083023912075,0.8713012577250833,57220,1780,47,953,10,500,41300,median_all_prefix_zero_rate,oof_averaged,cost_min,True

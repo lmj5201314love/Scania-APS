@@ -363,3 +363,46 @@ Day17 输出只来自 official train 内部的 OOF / Repeated CV 实验，不包
 | `outputs/figures/day17_oof_threshold_rule_compare.png` | 不同 Recall/FN floor 规则下的 OOF total cost 对比。 |
 
 本次本地运行实际使用 `5 folds x 1 repeat`，配置文件仍保留默认 `5 folds x 2 repeats`。若后续离线复盘可按配置跑满更大规模。
+
+## Day 18 OOF Probability Ensemble 输出说明
+
+Day18 输出只来自 official train 内部 OOF 实验，不包含 official test 结果，不应解释为最终模型效果。
+
+### predictions
+
+| 文件 | 说明 |
+|---|---|
+| `outputs/predictions/day18_oof_base_raw_predictions.csv` | 三个 base strategy 在每个 fold_valid 上的原始 OOF 预测。 |
+| `outputs/predictions/day18_oof_base_averaged_predictions.csv` | 按 sample 和 base strategy 聚合后的 OOF 平均概率；当前为 5 folds x 1 repeat。 |
+| `outputs/predictions/day18_oof_ensemble_predictions.csv` | 12 个固定 recipe 生成的 OOF ensemble score。 |
+
+### metrics
+
+| 文件 | 说明 |
+|---|---|
+| `outputs/metrics/day18_oof_base_threshold_metrics.csv` | base strategy 的完整 OOF threshold grid。 |
+| `outputs/metrics/day18_oof_base_best_summary.csv` | base strategy 的 `cost_min` OOF 阈值摘要。 |
+| `outputs/metrics/day18_oof_ensemble_threshold_metrics.csv` | 12 个 ensemble recipe 的完整 threshold grid。 |
+| `outputs/metrics/day18_oof_ensemble_best_summary.csv` | 每个 ensemble 在 cost_min / recall floor / FN floor 下的 OOF 最佳阈值。 |
+| `outputs/metrics/day18_oof_ensemble_strategy_compare.csv` | 便于横向对比 ensemble recipe 与 threshold rule 的汇总表。 |
+
+### tables
+
+| 文件 | 说明 |
+|---|---|
+| `outputs/tables/day18_oof_fn_overlap_summary.csv` | 以 structural_all 为 reference 的 FN overlap 与可补回样本数量。 |
+| `outputs/tables/day18_oof_fp_overlap_summary.csv` | 三个 base strategy 的 FP 重叠关系。 |
+| `outputs/tables/day18_oof_rescuable_positive_samples.csv` | structural_all 漏掉的正类样本及其他模型是否能补回。 |
+| `outputs/tables/day18_oof_ensemble_recipe_metadata.csv` | 12 个 ensemble recipe 的权重、分组和用途说明。 |
+| `outputs/tables/day18_official_test_candidate_recommendations.csv` | 根据 OOF cost、FN reduction 和 FP/FN tradeoff 筛选 Day19 official test 候选；当前无推荐候选。 |
+| `outputs/tables/day18_oof_base_candidate_metadata.csv` | base OOF strategy 的 fold 级特征数量和结构特征信息。 |
+| `outputs/tables/day18_oof_base_fold_summary.csv` | 每个 fold 的训练/验证行数和正类数量。 |
+
+### figures
+
+| 文件 | 说明 |
+|---|---|
+| `outputs/figures/day18_oof_ensemble_cost_compare.png` | cost_min 下 ensemble total cost 对比。 |
+| `outputs/figures/day18_oof_ensemble_fn_fp_tradeoff.png` | cost_min 下 FP/FN 权衡散点图。 |
+| `outputs/figures/day18_oof_ensemble_threshold_rule_compare.png` | 不同 threshold selection rule 的最低 OOF cost。 |
+| `outputs/figures/day18_oof_fn_overlap_summary.png` | structural_all FN 被 indicator / prefix zero 补回的数量。 |

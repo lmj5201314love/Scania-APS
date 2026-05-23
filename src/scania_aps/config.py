@@ -72,6 +72,7 @@ class ScaniaConfig:
     advanced_models: dict[str, Any]
     xgb_tuning: dict[str, Any]
     oof_threshold: dict[str, Any]
+    oof_ensemble: dict[str, Any]
 
 
 def _require_sections(config: dict[str, Any], sections: list[str]) -> None:
@@ -115,6 +116,7 @@ def _validate_config(raw_config: dict[str, Any], project_root: Path) -> None:
             "advanced_models",
             "xgb_tuning",
             "oof_threshold",
+            "oof_ensemble",
         ],
     )
 
@@ -180,6 +182,21 @@ def _validate_config(raw_config: dict[str, Any], project_root: Path) -> None:
     if float(oof_grid["start"]) >= float(oof_grid["stop"]):
         raise ValueError("oof_threshold.threshold_grid.start must be smaller than stop.")
 
+    oof_ensemble = raw_config["oof_ensemble"]
+    ensemble_cv = oof_ensemble["cv"]
+    if int(ensemble_cv["n_splits"]) < 2:
+        raise ValueError("oof_ensemble.cv.n_splits must be >= 2.")
+    if int(ensemble_cv["n_repeats"]) < 1:
+        raise ValueError("oof_ensemble.cv.n_repeats must be >= 1.")
+    ensemble_grid = oof_ensemble["threshold_grid"]
+    for key in ["start", "stop", "step"]:
+        if float(ensemble_grid[key]) <= 0:
+            raise ValueError(f"oof_ensemble.threshold_grid.{key} must be > 0.")
+    if float(ensemble_grid["start"]) >= float(ensemble_grid["stop"]):
+        raise ValueError("oof_ensemble.threshold_grid.start must be smaller than stop.")
+    if not oof_ensemble.get("base_candidate_strategies"):
+        raise ValueError("oof_ensemble must define base_candidate_strategies.")
+
 
 def get_config(config_path: str | Path | None = None) -> ScaniaConfig:
     """读取并整理项目配置。"""
@@ -219,4 +236,5 @@ def get_config(config_path: str | Path | None = None) -> ScaniaConfig:
         advanced_models=raw_config["advanced_models"],
         xgb_tuning=raw_config["xgb_tuning"],
         oof_threshold=raw_config["oof_threshold"],
+        oof_ensemble=raw_config["oof_ensemble"],
     )

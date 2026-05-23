@@ -1,0 +1,8 @@
+﻿fp_overlap_type,sample_count
+all_three_fp,1720
+structural_only_fp,95
+indicator_only_fp,371
+prefixzero_only_fp,4
+structural_indicator_fp,414
+structural_prefixzero_fp,11
+indicator_prefixzero_fp,45

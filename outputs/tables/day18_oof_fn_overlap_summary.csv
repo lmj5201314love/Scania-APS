@@ -1,0 +1,2 @@
+﻿reference_strategy,reference_fn_count,indicator_rescued_fn,prefixzero_rescued_fn,either_rescued_fn,all_models_fn,structural_only_fn,indicator_extra_fp_vs_reference,prefixzero_extra_fp_vs_reference
+median_all_structural_all,34,7,1,7,27,7,416,49

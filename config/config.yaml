@@ -1,6 +1,6 @@
 project:
   name: scania_aps_predictive_maintenance
-  stage: day17_oof_recall_floor_bin_projection
+  stage: day18_oof_probability_ensemble
 
 paths:
   train_raw: data/raw/aps_failure_training_set.csv
@@ -224,3 +224,68 @@ oof_threshold:
       - peak_bin_index
     tail_bin_count: 3
     keep_original_bin_columns: true
+
+oof_ensemble:
+  stage: day18_oof_probability_ensemble
+  random_state: 42
+
+  cv:
+    n_splits: 5
+    n_repeats: 1
+    stratified: true
+    shuffle: true
+
+  base_candidate_strategies:
+    - median_all_structural_all
+    - median_with_selected_missing_indicators
+    - median_all_prefix_zero_rate
+
+  threshold_grid:
+    start: 0.01
+    stop: 0.99
+    step: 0.01
+
+  threshold_selection_rules:
+    - cost_min
+    - recall_floor_960
+    - recall_floor_965
+    - recall_floor_970
+    - fn_floor_35
+    - fn_floor_40
+    - fn_floor_45
+
+  recall_floors:
+    recall_floor_960: 0.960
+    recall_floor_965: 0.965
+    recall_floor_970: 0.970
+
+  fn_floors:
+    fn_floor_35: 35
+    fn_floor_40: 40
+    fn_floor_45: 45
+
+  ensemble_recipes:
+    main:
+      - structural_all_single
+      - weighted_70_30_indicator
+      - weighted_80_20_indicator
+      - weighted_60_25_15
+      - weighted_70_20_10
+      - weighted_rank_60_25_15
+
+    auxiliary:
+      - mean_structural_indicator
+      - weighted_80_20_prefixzero
+      - rank_average_three
+      - mean_three_models
+
+    diagnostic:
+      - mean_structural_prefixzero
+      - max_three_models
+
+  official_test_candidate_filter:
+    min_oof_cost_reduction_pct: 0.03
+    min_fn_reduction: 3
+    max_fp_increase_per_fn_saved: 40
+    allow_max_three_models: false
+    allow_diagnostic_as_final_candidate: false

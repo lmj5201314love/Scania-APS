@@ -57,7 +57,7 @@ FN 代表真实 APS 故障被漏掉，业务风险高于 FP。因此本项目不
 
 ## 当前阶段优先级
 
-当前已完成 Day 1-7、项目清理、validation-based model selection、缺失值/特征工程消融实验、Day 10 字段级分布诊断、Day 11 前缀组结构信号分析、Day 12 结构特征方案设计、Day 13 结构特征 valid-only 实验、Day 14 official test 最终观察、Day 15 Controlled XGBoost Tuning 和 Day 16 tuned XGBoost official test evaluation，进入 Day 17 OOF threshold selection and bin projection 阶段。当前重点是只使用 official train 内部的 OOF / Repeated CV 预测选择阈值，并加入 Recall/FN floor 业务约束，同时验证匿名 histogram/bin-like 前缀组投影特征是否提供额外信号；official test 不参与 Day17，不能用 test 反向选择阈值、参数或特征。本阶段不做 GridSearch、不做 SHAP、不做 PCA、不加入 SVM / LightGBM / CatBoost、不解释匿名字段真实物理含义、不修改 raw 数据、不覆盖历史结果；成本函数继续从 cfg 读取。若 OOF + Recall/FN floor 或 bin projection 收益有限，后续应转向 histogram/bin 结构深化、模型解释性分析、SQL 深化和 README / 报告收尾。
+当前已完成 Day 1-7、项目清理、validation-based model selection、缺失值/特征工程消融实验、Day 10 字段级分布诊断、Day 11 前缀组结构信号分析、Day 12 结构特征方案设计、Day 13 结构特征 valid-only 实验、Day 14 official test 最终观察、Day 15 Controlled XGBoost Tuning、Day 16 tuned XGBoost official test evaluation 和 Day 17 OOF threshold selection/bin projection，进入 Day 18 OOF probability ensemble 阶段。当前重点是只使用 official train 内部的同折 OOF 预测，比较 structural_all、selected missing indicators 和 prefix zero rate 三类 base strategy 的概率互补性，并用固定 recipe 做概率平均；不做 ensemble 权重搜索，不使用 Day15 tuned models，不使用 official test，不把 OOF 最优写成最终模型。本阶段不做 GridSearch、不做 SHAP、不做 PCA、不加入 SVM / LightGBM / CatBoost、不解释匿名字段真实物理含义、不修改 raw 数据、不覆盖历史结果；成本函数继续从 cfg 读取。如果 Day18 ensemble 没有满足进入 Day19 official test 的筛选条件，应如实记录收益有限，并转向解释性、SQL 深化、README/报告收尾，或后续再单独深化 histogram/bin projection。
 
 ## Agent skills
 

@@ -359,3 +359,21 @@ Histogram/bin projection 的依据是：UCI APS 数据说明中提到部分匿�
 Recall/FN floor 的观察显示：强行压低 FN 或提高 recall 会显著增加 FP。例如 `recall_floor_975` 下 `median_all_structural_all` 的 FN 为 25、recall 为 0.9750，但 total cost 上升到 50090。这说明 Recall/FN floor 是业务约束，不是单纯模型分数优化，需要结合维修容量和误报成本解释。
 
 Day18 只应固定 Day17 OOF 中少数候选方案到 official test 做最终观察，不能根据 test 结果反向修改 Day17 的阈值或规则。建议观察：`median_all_structural_all_plus_bin_projection` 的 cost_min 方案，以及 `median_all_structural_all` 的 recall_floor_975 方案。
+
+## 21. OOF Probability Ensemble and Overlap Analysis
+
+Day18 在 Day17 OOF 框架基础上进一步分析多个策略之间是否存在“补漏”关系。本轮没有使用 official test，也没有根据历史 official test 结果调 ensemble 权重。所有 ensemble recipe 都是预先固定的概率平均或 rank 平均。
+
+本轮 base strategies 包括：
+
+| base strategy | 定位 |
+|---|---|
+| median_all_structural_all | 当前最稳主模型，用作 reference |
+| median_with_selected_missing_indicators | recall 型补漏策略，使用 fold_train 选出的 selected missing indicators；对应历史 `median_with_indicator` 方向的更严格 OOF 版本 |
+| median_all_prefix_zero_rate | prefix zero 结构补漏策略 |
+
+OOF overlap analysis 显示，`median_all_structural_all` 的 34 个 OOF FN 中，indicator 能补回 7 个，prefix zero 只能补回 1 个，两者合计也只补回 7 个；仍有 27 个正类被所有 base strategy 漏掉。这说明三类方案之间的互补空间存在，但不大。
+
+固定 recipe 的 ensemble 结果也支持这个判断。`mean_structural_indicator` 的 OOF cost 最低，为 38910；main 组中 `weighted_70_20_10` 最低，为 38920。二者相对 `structural_all_single` 的 39400 只小幅下降，且 FN 反而增加。换言之，ensemble 的小幅成本下降主要来自减少 FP，而不是解决漏报。
+
+业务筛选规则要求候选至少降低 3% OOF cost，并至少减少 3 个 FN。当前没有任何非 diagnostic ensemble 同时满足这些条件，因此不推荐强行进入 Day19 official test。该结论说明，在当前特征与模型框架下，继续做概率平均或权重搜索的边际收益有限，后续更适合转向解释性分析、SQL 业务场景深化、报告收尾，或单独改进更精细的 histogram/bin projection 特征。

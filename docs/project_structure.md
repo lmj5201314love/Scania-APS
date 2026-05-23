@@ -284,3 +284,36 @@ Day17 新增本地输出：
 - `outputs/figures/day17_oof_threshold_rule_compare.png`
 
 这些输出只代表 official train 内部 OOF 分析结果，不应解释为 official test 或生产环境最终结论。
+
+## Day 18 OOF Probability Ensemble 补充
+
+Day18 新增文件和输出如下：
+
+- `src/scania_aps/models/oof_ensemble_experiments.py`：同折 OOF base prediction、FN/FP overlap、固定 recipe 概率 ensemble、threshold grid 和 Day19 候选筛选逻辑。
+- `scripts/16_oof_probability_ensemble.py`：从项目根目录运行 Day18 OOF ensemble 实验；只使用 official train，不使用 official test。
+- `notebooks/18_oof_probability_ensemble.ipynb`：记录 Day18 的实验边界、base strategy、overlap analysis、12 个 recipe、threshold rule 和候选筛选结论。
+- `tests/test_oof_ensemble_experiments_schema.py`：用小型模拟数据测试 recipe 计算、rank average、threshold rule 和 diagnostic candidate 排除逻辑。
+
+Day18 新增本地输出：
+
+- `outputs/predictions/day18_oof_base_raw_predictions.csv`
+- `outputs/predictions/day18_oof_base_averaged_predictions.csv`
+- `outputs/predictions/day18_oof_ensemble_predictions.csv`
+- `outputs/metrics/day18_oof_base_threshold_metrics.csv`
+- `outputs/metrics/day18_oof_base_best_summary.csv`
+- `outputs/metrics/day18_oof_ensemble_threshold_metrics.csv`
+- `outputs/metrics/day18_oof_ensemble_best_summary.csv`
+- `outputs/metrics/day18_oof_ensemble_strategy_compare.csv`
+- `outputs/tables/day18_oof_fn_overlap_summary.csv`
+- `outputs/tables/day18_oof_fp_overlap_summary.csv`
+- `outputs/tables/day18_oof_rescuable_positive_samples.csv`
+- `outputs/tables/day18_oof_ensemble_recipe_metadata.csv`
+- `outputs/tables/day18_official_test_candidate_recommendations.csv`
+- `outputs/tables/day18_oof_base_candidate_metadata.csv`
+- `outputs/tables/day18_oof_base_fold_summary.csv`
+- `outputs/figures/day18_oof_ensemble_cost_compare.png`
+- `outputs/figures/day18_oof_ensemble_fn_fp_tradeoff.png`
+- `outputs/figures/day18_oof_ensemble_threshold_rule_compare.png`
+- `outputs/figures/day18_oof_fn_overlap_summary.png`
+
+这些输出只代表 official train 内部 OOF 分析，不能解释为 official test 或生产环境最终结论。

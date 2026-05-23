@@ -1141,3 +1141,27 @@ Day18 建议只选择少数候选做 official test 最终观察：
 - `median_all_structural_all` + `recall_floor_975` threshold=0.03：用于观察显式高 recall 业务约束在 official test 上的代价。
 
 如果 Day18 仍然没有稳定改善，应停止继续追逐模型和阈值，转向 histogram/bin 结构深化、模型解释性分析、SQL 业务深化和最终 README / 报告收尾。
+
+## Day 18：OOF Probability Ensemble and Stable Threshold Selection
+
+Day18 的动机来自 Day17：OOF 框架可以降低单一 valid split 的偶然性，但 bin projection 的收益很轻微；继续把主线放在更激进的 recall floor 或 tuned model 上并不稳。因此本轮只使用 official train 内部的同折 OOF 预测，比较 `median_all_structural_all`、`median_with_selected_missing_indicators` 和 `median_all_prefix_zero_rate` 三类 base strategy 是否存在概率互补空间。`median_with_selected_missing_indicators` 对应历史 `median_with_indicator` 方向的更严格 OOF 版本：原始数值特征中位数填充 + fold_train 内筛选 selected missing indicators，fold_valid 只做 transform。
+
+本轮严格没有使用 official test，没有做权重搜索，没有使用 Day15 tuned models，也没有修改 `data/raw/`。三类 base strategy 使用同一组 `5 folds x 1 repeat` OOF folds，每个 fold 内的 imputer、结构特征 builder 和 selected missing indicators 都只在 fold_train 上 fit。
+
+base OOF `cost_min` 结果如下：
+
+| base strategy | threshold | Precision | Recall | F2 | AP | FP | FN | Total Cost |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| median_all_structural_all | 0.09 | 0.3013 | 0.9660 | 0.6703 | 0.8711 | 2240 | 34 | 39400 |
+| median_with_selected_missing_indicators | 0.07 | 0.2758 | 0.9710 | 0.6455 | 0.8691 | 2550 | 29 | 40000 |
+| median_all_prefix_zero_rate | 0.14 | 0.3487 | 0.9530 | 0.7077 | 0.8713 | 1780 | 47 | 41300 |
+
+FN overlap 显示：以 `median_all_structural_all` 为 reference，它在 OOF 上有 34 个 FN；`median_with_selected_missing_indicators` 能补回其中 7 个，`median_all_prefix_zero_rate` 只能补回 1 个，两者合计仍只补回 7 个，还有 27 个正类是三个 base strategy 都漏掉的。补回这些 FN 的代价也很明显：indicator 相对 reference 额外带来 416 个 FP，prefix zero 额外带来 49 个 FP。
+
+12 个固定 ensemble recipe 的 OOF `cost_min` 结果显示，最低成本是 `mean_structural_indicator`，total cost 为 38910；main 组里最低的是 `weighted_70_20_10`，total cost 为 38920。它们相对 `structural_all_single` 的 39400 只降低约 1.2%，且不是通过减少 FN 获得收益，而主要是降低 FP、同时 FN 变多。因此这类改善不符合“补漏型 ensemble”的业务目标。
+
+更激进的 `weighted_rank_60_25_15` 能把 FN 从 34 降到 30，但 FP 从 2240 增加到 2577，total cost 上升到 40770。`max_three_models` 作为 diagnostic recall 上限观察，也没有给出可接受的成本结果，且按规则不能进入最终候选。
+
+根据 Day18 的 official test candidate filter：候选必须非 diagnostic、相对 `structural_all_single` 至少降低 3% OOF cost、至少减少 3 个 FN，并且新增 FP/FN saved 比例可控。当前没有任何 ensemble 满足这些条件，因此 Day18 不推荐进入 Day19 official test 的候选。
+
+结论：当前 probability ensemble 没有带来足够稳定的业务收益。后续不建议继续做权重搜索或更多模型堆叠；更合理的方向是转向模型解释性、SQL 业务深化、README/项目报告最终整理，或单独设计更精细的 histogram/bin projection 实验，因为当前 bin projection 仍偏粗，可能丢失分布形状信息。

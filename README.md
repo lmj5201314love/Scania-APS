@@ -227,3 +227,7 @@ Day15 只使用 official train 内部划分的 `train_inner / valid`，不使用
 ## 当前增强阶段：Day17 OOF Threshold Selection
 
 Day16 显示单一 validation split 上调出的 XGBoost 参数和阈值没有稳定泛化到 official test。项目当前进入 Day17：引入 OOF / Repeated CV 阈值选择与 Recall/FN floor，用于缓解单一 validation split 阈值不稳定问题，并验证匿名 histogram/bin-like 前缀组投影特征是否提供额外结构信号。Day17 不使用 official test，不重新做 GridSearch，不做 SHAP / PCA / SVM / LightGBM / CatBoost。
+
+## 当前增强阶段：Day18 OOF Probability Ensemble
+
+Day18 在 OOF 框架下评估多策略概率平均，用于判断 `structural_all` 与 recall 型方案（selected missing indicators、prefix zero rate）是否存在可泛化互补。本轮不使用 official test、不做权重搜索、不使用 Day15 tuned models；OOF 结果仅用于决定是否存在值得进入后续 official test 观察的少数候选。

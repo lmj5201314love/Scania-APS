@@ -1,0 +1,13 @@
+﻿ensemble_name,ensemble_group,component_strategies,recipe_description,is_diagnostic
+structural_all_single,main,median_all_structural_all,structural_all base probability only,False
+mean_structural_indicator,auxiliary,median_all_structural_all|median_with_selected_missing_indicators,0.50 structural_all + 0.50 selected missing indicator,False
+weighted_70_30_indicator,main,median_all_structural_all|median_with_selected_missing_indicators,0.70 structural_all + 0.30 selected missing indicator,False
+weighted_80_20_indicator,main,median_all_structural_all|median_with_selected_missing_indicators,0.80 structural_all + 0.20 selected missing indicator,False
+mean_structural_prefixzero,diagnostic,median_all_structural_all|median_all_prefix_zero_rate,0.50 structural_all + 0.50 prefix zero rate,True
+weighted_80_20_prefixzero,auxiliary,median_all_structural_all|median_all_prefix_zero_rate,0.80 structural_all + 0.20 prefix zero rate,False
+mean_three_models,auxiliary,median_all_structural_all|median_with_selected_missing_indicators|median_all_prefix_zero_rate,"mean of structural_all, selected missing indicator and prefix zero rate",False
+weighted_60_25_15,main,median_all_structural_all|median_with_selected_missing_indicators|median_all_prefix_zero_rate,0.60 structural_all + 0.25 indicator + 0.15 prefix zero,False
+weighted_70_20_10,main,median_all_structural_all|median_with_selected_missing_indicators|median_all_prefix_zero_rate,0.70 structural_all + 0.20 indicator + 0.10 prefix zero,False
+rank_average_three,auxiliary,median_all_structural_all|median_with_selected_missing_indicators|median_all_prefix_zero_rate,mean rank percentile of three base scores,False
+weighted_rank_60_25_15,main,median_all_structural_all|median_with_selected_missing_indicators|median_all_prefix_zero_rate,weighted rank percentile: 0.60/0.25/0.15,False
+max_three_models,diagnostic,median_all_structural_all|median_with_selected_missing_indicators|median_all_prefix_zero_rate,max score across three base models; diagnostic recall ceiling only,True
