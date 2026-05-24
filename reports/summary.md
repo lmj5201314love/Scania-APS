@@ -1165,3 +1165,35 @@ FN overlap 显示：以 `median_all_structural_all` 为 reference，它在 OOF �
 根据 Day18 的 official test candidate filter：候选必须非 diagnostic、相对 `structural_all_single` 至少降低 3% OOF cost、至少减少 3 个 FN，并且新增 FP/FN saved 比例可控。当前没有任何 ensemble 满足这些条件，因此 Day18 不推荐进入 Day19 official test 的候选。
 
 结论：当前 probability ensemble 没有带来足够稳定的业务收益。后续不建议继续做权重搜索或更多模型堆叠；更合理的方向是转向模型解释性、SQL 业务深化、README/项目报告最终整理，或单独设计更精细的 histogram/bin projection 实验，因为当前 bin projection 仍偏粗，可能丢失分布形状信息。
+
+## Day 19 SQL 业务分析与 MySQL 导入准备
+
+Day19 不做建模、不重新选择阈值，也不连接 MySQL。本轮将当前最终候选 `median_all_structural_all` 的 Day14 official test 预测结果整理成可导入 MySQL 的统一业务分析表，并补充一组面向维修决策的 SQL。
+
+本轮新增脚本 `scripts/17_prepare_sql_business_tables.py`，读取以下已有结果：
+
+- `outputs/predictions/day14_structural_feature_test_predictions.csv`
+- `outputs/metrics/day14_structural_feature_test_results.csv`
+- `outputs/metrics/day16_xgb_tuning_test_results.csv`
+- `outputs/metrics/day18_oof_ensemble_best_summary.csv`
+
+脚本生成了 `outputs/sql_exports/` 下 4 个 CSV：
+
+- `model_prediction_results.csv`：16,000 行、17 列，包含 official test 样本级预测、risk level、suggested action、TP/FP/TN/FN、sample cost、probability band 和 decile。
+- `model_policy_comparison.csv`：5 个 policy，包括 `naive_all_negative`、`day14_baseline_median_all`、`day14_structural_all_final_candidate`、`day16_tuned_best` 和 `day18_oof_ensemble_best`。其中 Day18 是 OOF train 口径，不能和 official test 直接横向比较。
+- `threshold_sensitivity_results.csv`：99 个 threshold，展示不同阈值下 predicted workload、FP、FN、precision、recall、F2 和 total cost 的变化。该表只用于策略敏感性分析，不用于反向修改最终阈值。
+- `sql_export_manifest.csv`：记录导出文件、行列数、目标 MySQL 表和生成时间。
+
+本轮新增 `sql/00_create_business_analysis_tables.sql`，用于创建 `model_prediction_results`、`model_policy_comparison` 和 `threshold_sensitivity_results` 三张业务分析表。MySQL Workbench 导入仍由用户手动执行，项目代码不写真实数据库密码，也不自动连接 MySQL。
+
+新增业务分析 SQL 包括：
+
+- `sql/08_topk_maintenance_capacity_analysis.sql`：回答“如果只能检查 Top 50/100/200/500/1000 高风险样本，能覆盖多少真实 APS 故障”。
+- `sql/09_risk_workload_analysis.sql`：回答“Critical/High/Medium/Low 各档有多少样本、多少真实故障、维修工作量多大”。
+- `sql/10_prediction_error_analysis.sql`：分析 FP/FN 在风险等级和概率区间中的分布，并列出漏报和高置信误报样本。
+- `sql/11_business_cost_policy_comparison.sql`：对比 naive baseline、Day14 baseline、Day14 final candidate、Day16 tuned best 和 Day18 OOF best 的成本。
+- `sql/12_model_monitoring_template.sql`：提供未来生产批次监控模板，覆盖预测量、风险等级占比、score 分布漂移和缺失率漂移。
+- `sql/13_decile_lift_gain_analysis.sql`：分析最高风险 decile 是否集中真实故障，用于说明模型排序能力。
+- `sql/14_threshold_sensitivity_analysis.sql`：基于 final candidate 概率展示阈值变化对工作量、FN、recall、F2 和 total cost 的影响。
+
+Day19 的关键边界：`sample_id` 只是匿名样本编号，不是真实车辆 ID；SQL 中的 `@fp_cost=10` 和 `@fn_cost=500` 需要人工与 `config/config.yaml` 保持一致；当前最终候选仍是 Day14 `median_all_structural_all`，threshold 保持 `0.18`。

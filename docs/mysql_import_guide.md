@@ -221,3 +221,43 @@ Day 3 不做：
 
 逐字段缺失率 SQL 可以由脚本自动生成，但该生成文件只作为可选复核工具，不作为主线 SQL 文件手动维护。
 
+## 9. Day 19 业务分析表导入说明
+
+Day 19 新增了一组面向业务交付的 MySQL 导入表，用于在 MySQL Workbench 中复核最终候选方案的维修容量、风险等级、错误类型、成本对比和阈值敏感性。
+
+本轮需要先运行建表 SQL：
+
+```sql
+source sql/00_create_business_analysis_tables.sql;
+```
+
+然后导入以下 CSV：
+
+| CSV | 目标 MySQL 表 | 说明 |
+|---|---|---|
+| `outputs/sql_exports/model_prediction_results.csv` | `model_prediction_results` | Day14 `median_all_structural_all` final candidate 的 official test 样本级预测结果。 |
+| `outputs/sql_exports/model_policy_comparison.csv` | `model_policy_comparison` | naive baseline、Day14、Day16 和 Day18 OOF 的策略级成本对比。 |
+| `outputs/sql_exports/threshold_sensitivity_results.csv` | `threshold_sensitivity_results` | 基于最终候选概率的阈值敏感性分析表。 |
+
+建议检查 SQL：
+
+```sql
+SELECT COUNT(*) FROM model_prediction_results;
+SELECT COUNT(*) FROM model_policy_comparison;
+SELECT COUNT(*) FROM threshold_sensitivity_results;
+
+SELECT * FROM model_prediction_results LIMIT 5;
+
+SELECT
+    confusion_type,
+    COUNT(*) AS sample_count
+FROM model_prediction_results
+GROUP BY confusion_type;
+```
+
+注意事项：
+
+* `sample_id` 是匿名样本编号，不是真实车辆 ID。
+* SQL 中如使用 `@fp_cost = 10`、`@fn_cost = 500`，需要人工保持与 `config/config.yaml` 一致。
+* `day18_oof_ensemble_best` 是 OOF train 内部结果，不要与 official test 结果直接横向比较。
+* `threshold_sensitivity_results` 只用于策略敏感性分析，不用于反向修改最终方案。当前最终候选仍保留 Day14 `median_all_structural_all` 和 threshold `0.18`。

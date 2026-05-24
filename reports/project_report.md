@@ -377,3 +377,44 @@ OOF overlap analysis 显示，`median_all_structural_all` 的 34 个 OOF FN 中�
 固定 recipe 的 ensemble 结果也支持这个判断。`mean_structural_indicator` 的 OOF cost 最低，为 38910；main 组中 `weighted_70_20_10` 最低，为 38920。二者相对 `structural_all_single` 的 39400 只小幅下降，且 FN 反而增加。换言之，ensemble 的小幅成本下降主要来自减少 FP，而不是解决漏报。
 
 业务筛选规则要求候选至少降低 3% OOF cost，并至少减少 3 个 FN。当前没有任何非 diagnostic ensemble 同时满足这些条件，因此不推荐强行进入 Day19 official test。该结论说明，在当前特征与模型框架下，继续做概率平均或权重搜索的边际收益有限，后续更适合转向解释性分析、SQL 业务场景深化、报告收尾，或单独改进更精细的 histogram/bin projection 特征。
+
+## SQL Business Analysis and Maintenance Decision Support
+
+在 Day18 之后，项目不再继续追逐模型分数，而是转向 SQL 业务交付。原因是：Day14 的 `median_all_structural_all` 已经是当前最稳的 official test 候选；Day15/16 说明单一 valid split 调参没有稳定泛化；Day18 说明 OOF probability ensemble 没有带来足够稳定的业务收益。因此 Day19 的重点是把模型结果转化为维修容量、风险工作量、错误分析和成本对比这些业务问题。
+
+### 统一预测结果表
+
+Day19 生成 `outputs/sql_exports/model_prediction_results.csv`，并准备导入 MySQL 表 `model_prediction_results`。该表以 Day14 `median_all_structural_all` final candidate 为准，包含 16,000 条 official test 样本记录。字段包括：
+
+- `sample_id`：匿名样本编号，不是真实车辆 ID。
+- `y_true` / `y_proba` / `y_pred`：真实标签、预测概率和固定阈值 `0.18` 下的预测标签。
+- `risk_level` / `suggested_action`：维修优先级表达。
+- `confusion_type`：TP / FP / TN / FN。
+- `sample_cost`：FP 样本成本为 cfg 中的 false positive cost，FN 样本成本为 false negative cost。
+- `probability_band` / `decile`：用于错误分析、lift/gain 和维修容量 SQL。
+
+### Top-K 维修容量分析
+
+`sql/08_topk_maintenance_capacity_analysis.sql` 用于回答：如果维修团队只能检查风险最高的 Top K 样本，能覆盖多少真实 APS 故障。这个 SQL 比单纯报告 threshold 更贴近制造业维修资源约束，因为实际业务中维修团队往往有每日或每周检查容量。
+
+### 风险等级和维修工作量
+
+`sql/09_risk_workload_analysis.sql` 汇总 Critical / High / Medium / Low 各档的样本数量、真实故障数量、预测阳性数量、实际故障率和维修动作。这部分可以直接转化为维修队列优先级：Critical 和 High 进入优先检查，Medium 观察复查，Low 暂不处理。
+
+### 错误分析
+
+`sql/10_prediction_error_analysis.sql` 把 FP/FN 放到 risk level 和 probability band 中分析。漏报 FN 是 APS 项目最关键的业务风险，因此 SQL 单独列出 FN 样本；高置信 FP 则用于检查模型是否对某些非故障样本过度警报。
+
+### 成本对比和阈值敏感性
+
+`sql/11_business_cost_policy_comparison.sql` 使用 `model_policy_comparison` 对比 naive baseline、Day14 baseline、Day14 final candidate、Day16 tuned best 和 Day18 OOF best。其中 OOF 结果明确标记为 `oof_train`，不与 official test 直接横向比较。
+
+`sql/14_threshold_sensitivity_analysis.sql` 使用 `threshold_sensitivity_results` 展示阈值变化对 predicted workload、FP、FN、recall、F2 和 total cost 的影响。这个分析只用于业务策略敏感性展示，不用于回头修改最终阈值。
+
+### Lift / Gain 与监控模板
+
+`sql/13_decile_lift_gain_analysis.sql` 用 decile 分析模型排序能力：如果最高风险分位显著集中真实故障，说明模型概率排序对维修资源排序有业务价值。
+
+`sql/12_model_monitoring_template.sql` 提供未来上线后的批次监控模板，包括预测量、predicted positive rate、risk level 占比、score 分布漂移、缺失率漂移和高风险样本数量变化。当前项目没有真实线上数据，因此该文件只是 template，不代表已有生产监控结果。
+
+Day19 的 SQL 深化让项目从“模型得分展示”进一步落到“维修资源决策支持”：不是只问模型准不准，而是问有限维修能力下先查哪些样本、漏报在哪里、误报带来多少额外工作量，以及未来上线后如何监控模型是否失效。

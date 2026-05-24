@@ -1,0 +1,4 @@
+﻿file_name,relative_path,row_count,column_count,description,target_mysql_table,generated_at
+model_prediction_results.csv,outputs/sql_exports/model_prediction_results.csv,16000,17,Day14 structural_all final candidate 的 official test 样本级预测结果。,model_prediction_results,2026-05-23 12:27:15
+model_policy_comparison.csv,outputs/sql_exports/model_policy_comparison.csv,5,17,naive baseline、Day14、Day16 和 Day18 OOF 的策略级成本对比。,model_policy_comparison,2026-05-23 12:27:15
+threshold_sensitivity_results.csv,outputs/sql_exports/threshold_sensitivity_results.csv,99,15,基于 Day14 final candidate 概率的阈值敏感性分析结果。,threshold_sensitivity_results,2026-05-23 12:27:15

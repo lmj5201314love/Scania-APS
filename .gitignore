@@ -50,6 +50,7 @@ models/*
 # outputs/metrics/*
 # outputs/predictions/*
 # outputs/tables/*
+outputs/predictions/day18_oof_ensemble_predictions.csv
 !outputs/figures/.gitkeep
 !outputs/metrics/.gitkeep
 !outputs/predictions/.gitkeep

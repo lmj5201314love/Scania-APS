@@ -317,3 +317,35 @@ Day18 新增本地输出：
 - `outputs/figures/day18_oof_fn_overlap_summary.png`
 
 这些输出只代表 official train 内部 OOF 分析，不能解释为 official test 或生产环境最终结论。
+
+## Day 19 SQL 业务分析与 MySQL 导入准备
+
+Day 19 不继续追模型分数，转向 SQL 业务交付分析。核心目标是把当前最终候选 `median_all_structural_all` 的 official test 预测结果整理为 MySQL 可导入表，并提供维修容量、风险工作量、错误分析、成本对比、监控模板、decile/lift/gain 和阈值敏感性 SQL。
+
+### 新增脚本
+
+- `scripts/17_prepare_sql_business_tables.py`：读取 Day14/Day16/Day18 输出，生成 `outputs/sql_exports/` 下的 MySQL 导入 CSV。
+
+### 新增导出目录
+
+- `outputs/sql_exports/model_prediction_results.csv`
+- `outputs/sql_exports/model_policy_comparison.csv`
+- `outputs/sql_exports/threshold_sensitivity_results.csv`
+- `outputs/sql_exports/sql_export_manifest.csv`
+
+### 新增 SQL
+
+- `sql/00_create_business_analysis_tables.sql`：创建业务分析表。
+- `sql/08_topk_maintenance_capacity_analysis.sql`：Top-K 维修容量分析。
+- `sql/09_risk_workload_analysis.sql`：风险等级和维修工作量分析。
+- `sql/10_prediction_error_analysis.sql`：FP/FN 错误分析。
+- `sql/11_business_cost_policy_comparison.sql`：策略级成本对比。
+- `sql/12_model_monitoring_template.sql`：生产监控 SQL 模板。
+- `sql/13_decile_lift_gain_analysis.sql`：decile / lift / gain 分析。
+- `sql/14_threshold_sensitivity_analysis.sql`：阈值敏感性分析。
+
+### 可选 Notebook
+
+- `notebooks/19_sql_business_analysis.ipynb`：如需在无 MySQL 环境下快速预览 SQL 业务分析结果，可读取 `outputs/sql_exports/` CSV 进行本地展示。
+
+Day 19 的 SQL 输出用于业务分析和面试讲述，不连接 MySQL、不导入 MySQL、不修改 `data/raw/`，也不改变 Day14 final candidate。

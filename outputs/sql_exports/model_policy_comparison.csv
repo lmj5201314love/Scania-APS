@@ -1,0 +1,6 @@
+﻿policy_name,dataset,threshold,fp,fn,tp,tn,fp_cost,fn_cost,fp_cost_total,fn_cost_total,total_cost,baseline_total_cost,cost_reduction,cost_reduction_rate,source_file,note
+naive_all_negative,official_test,,0,375,0,15625,10,500,0,187500,187500,187500,0,0.0,outputs/predictions/day14_structural_feature_test_predictions.csv,全预测为 neg 的 naive baseline，作为 official test 成本下降基准。
+day14_baseline_median_all,official_test,0.16,432,13,362,15193,10,500,4320,6500,10820,187500,176680,0.9422933333333333,outputs/metrics/day14_structural_feature_test_results.csv,Day14 未调参 baseline_median_all official test 结果。
+day14_structural_all_final_candidate,official_test,0.18,398,12,363,15227,10,500,3980,6000,9980,187500,177520,0.9467733333333334,outputs/metrics/day14_structural_feature_test_results.csv,当前最终推荐候选，使用 Day13 valid 选择的 threshold=0.18。
+day16_tuned_best,official_test,0.19,376,15,360,15249,10,500,3760,7500,11260,187500,176240,0.9399466666666667,outputs/metrics/day16_xgb_tuning_test_results.csv,Day15 tuned 参数在 Day16 official test 上的最低成本方案，用于说明调参未稳定泛化。
+day18_oof_ensemble_best,oof_train,0.14,1841,41,959,57159,10,500,18410,20500,38910,500000,461090,0.92218,outputs/metrics/day18_oof_ensemble_best_summary.csv,OOF train 内部口径结果，不可与 official test 成本直接横向比较。

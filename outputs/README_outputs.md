@@ -406,3 +406,29 @@ Day18 输出只来自 official train 内部 OOF 实验，不包含 official test
 | `outputs/figures/day18_oof_ensemble_fn_fp_tradeoff.png` | cost_min 下 FP/FN 权衡散点图。 |
 | `outputs/figures/day18_oof_ensemble_threshold_rule_compare.png` | 不同 threshold selection rule 的最低 OOF cost。 |
 | `outputs/figures/day18_oof_fn_overlap_summary.png` | structural_all FN 被 indicator / prefix zero 补回的数量。 |
+
+## Day 19 SQL business analysis exports
+
+Day 19 不做建模，只把当前最终候选 `median_all_structural_all` 的 official test 预测结果整理成 MySQL 可导入表，并补充业务分析 SQL。
+
+### sql_exports
+
+| 文件 | 说明 |
+|---|---|
+| `outputs/sql_exports/model_prediction_results.csv` | Day14 `median_all_structural_all` final candidate 的 official test 样本级预测结果，包含 risk level、confusion type、sample cost、probability band 和 decile。 |
+| `outputs/sql_exports/model_policy_comparison.csv` | naive baseline、Day14 baseline、Day14 final candidate、Day16 tuned best 和 Day18 OOF best 的策略级成本对比。注意 OOF 结果不可与 official test 直接横向比较。 |
+| `outputs/sql_exports/threshold_sensitivity_results.csv` | 基于 final candidate 概率的 0.01-0.99 阈值敏感性表，只用于业务策略观察，不用于修改最终阈值。 |
+| `outputs/sql_exports/sql_export_manifest.csv` | Day19 导出文件清单，记录行数、列数、目标 MySQL 表和生成时间。 |
+
+### sql files
+
+| 文件 | 说明 |
+|---|---|
+| `sql/00_create_business_analysis_tables.sql` | 创建 Day19 业务分析 MySQL 表。 |
+| `sql/08_topk_maintenance_capacity_analysis.sql` | Top-K 维修容量分析：检查 Top 50/100/200/500/1000 高风险样本时能覆盖多少真实故障。 |
+| `sql/09_risk_workload_analysis.sql` | 风险等级与维修工作量分析。 |
+| `sql/10_prediction_error_analysis.sql` | TP/FP/TN/FN、FP/FN 风险档和概率区间错误分析。 |
+| `sql/11_business_cost_policy_comparison.sql` | naive baseline、Day14、Day16、Day18 OOF 的成本策略对比。 |
+| `sql/12_model_monitoring_template.sql` | 未来上线批次监控模板，不代表已有生产数据。 |
+| `sql/13_decile_lift_gain_analysis.sql` | decile / lift / gain 排序能力分析。 |
+| `sql/14_threshold_sensitivity_analysis.sql` | 阈值变化下的工作量、FP、FN、recall、F2 和 total cost 分析。 |
