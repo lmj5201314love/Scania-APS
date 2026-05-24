@@ -57,7 +57,7 @@ FN 代表真实 APS 故障被漏掉，业务风险高于 FP。因此本项目不
 
 ## 当前阶段优先级
 
-当前已完成 Day 1-7、项目清理、validation-based model selection、缺失值/特征工程消融实验、Day 10 字段级分布诊断、Day 11 前缀组结构信号分析、Day 12 结构特征方案设计、Day 13 结构特征 valid-only 实验、Day 14 official test 最终观察、Day 15 Controlled XGBoost Tuning、Day 16 tuned XGBoost official test evaluation、Day 17 OOF threshold selection/bin projection 和 Day 18 OOF probability ensemble，进入 Day 19 SQL business analysis and MySQL export preparation 阶段。当前重点是把 Day14 `median_all_structural_all` final candidate 的 official test 预测结果整理成 MySQL 可导入 CSV，并编写 Top-K 维修容量、风险等级工作量、FP/FN 错误分析、成本策略对比、生产监控模板、decile/lift/gain 和阈值敏感性 SQL。本阶段不重新训练模型、不重新选择阈值、不连接或实际导入 MySQL、不修改 raw 数据、不覆盖历史结果；SQL 中如使用 `@fp_cost = 10`、`@fn_cost = 500`，必须注释说明需与 `config/config.yaml` 保持一致。`sample_id` 只能解释为匿名样本编号，不能说成真实车辆 ID。
+当前已完成 Day 1-7、项目清理、validation-based model selection、缺失值/特征工程消融实验、Day 10 字段级分布诊断、Day 11 前缀组结构信号分析、Day 12 结构特征方案设计、Day 13 结构特征 valid-only 实验、Day 14 official test 最终观察、Day 15 Controlled XGBoost Tuning、Day 16 tuned XGBoost official test evaluation、Day 17 OOF threshold selection/bin projection、Day 18 OOF probability ensemble 和 Day 19 SQL business analysis export，进入 Day 20 SQL business insights and visualization 阶段。当前重点是只读取 Day19 `outputs/sql_exports/` CSV，把 Top-K 维修容量、风险等级工作量、成本策略对比、decile/lift/gain、阈值敏感性和 FP/FN 错误分析转成 final tables、final figures 和 `reports/sql_business_insights.md`。本阶段不重新训练模型、不重新选择阈值、不连接或实际导入 MySQL、不修改 raw 数据、不覆盖历史结果；`threshold_sensitivity_results` 只用于策略敏感性展示，不能反向修改 Day14 final threshold=0.18。`sample_id` 只能解释为匿名样本编号，不能说成真实车辆 ID。
 
 ## Agent skills
 

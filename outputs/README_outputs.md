@@ -432,3 +432,41 @@ Day 19 不做建模，只把当前最终候选 `median_all_structural_all` 的 o
 | `sql/12_model_monitoring_template.sql` | 未来上线批次监控模板，不代表已有生产数据。 |
 | `sql/13_decile_lift_gain_analysis.sql` | decile / lift / gain 排序能力分析。 |
 | `sql/14_threshold_sensitivity_analysis.sql` | 阈值变化下的工作量、FP、FN、recall、F2 和 total cost 分析。 |
+
+## Day 20 SQL business insights and visualization
+
+Day20 不做建模、不重新选择 threshold、不连接 MySQL，只读取 Day19 `outputs/sql_exports/` CSV，将 SQL 业务分析口径转成 README / report 可引用的 final tables、final figures 和业务洞察报告。
+
+### Day20 final tables
+
+| 文件 | 说明 |
+|---|---|
+| `outputs/tables/final/final_topk_maintenance_capacity.csv` | Top-K 维修容量分析，展示 Top 50/100/200/500/1000 高风险匿名样本覆盖多少真实 APS 故障。 |
+| `outputs/tables/final/final_risk_workload_summary.csv` | 按 `risk_level` 和 `suggested_action` 汇总样本数、真实故障率、预测正类数、TP/FP/FN 和工作量。 |
+| `outputs/tables/final/final_error_breakdown_summary.csv` | 按 confusion type、risk level 和 probability band 汇总错误来源与样本成本。 |
+| `outputs/tables/final/final_decile_lift_gain_summary.csv` | Decile / lift / gain 分析，`decile=1` 表示预测概率最高的 10% 样本。 |
+| `outputs/tables/final/final_threshold_sensitivity_summary.csv` | 基于 Day14 final candidate 概率的 threshold sensitivity 汇总，使用标准列名 `precision`、`recall`、`f2`。 |
+| `outputs/tables/final/final_threshold_policy_highlights.csv` | `final_threshold_018`、min cost、recall floor、FN floor 等策略敏感性高亮；不用于反向修改最终阈值。 |
+| `outputs/tables/final/final_policy_cost_comparison.csv` | official test policy 与 oof_train policy 的成本对比表；OOF 行单独标注不可与 official test 直接横向比较。 |
+
+### Day20 final figures
+
+| 文件 | 说明 |
+|---|---|
+| `outputs/figures/final/final_cost_policy_comparison.png` | official test policy total cost 对比。 |
+| `outputs/figures/final/final_topk_maintenance_capacity.png` | Top-K 维修容量与 recall@K。 |
+| `outputs/figures/final/final_risk_level_workload.png` | 风险等级样本数与真实故障率。 |
+| `outputs/figures/final/final_decile_lift_gain.png` | Decile lift 与累计 recall。 |
+| `outputs/figures/final/final_threshold_sensitivity.png` | Threshold vs total cost，标注 Day14 final threshold=0.18。 |
+| `outputs/figures/final/final_threshold_fn_curve.png` | Threshold vs FN curve。 |
+| `outputs/figures/final/final_threshold_workload_curve.png` | Threshold vs workload rate。 |
+| `outputs/figures/final/final_confusion_error_breakdown.png` | TP / FP / FN / TN 数量对比。 |
+
+### Day20 reports and notebook
+
+| 文件 | 说明 |
+|---|---|
+| `reports/sql_business_insights.md` | SQL business insights 报告，包含 Top-K、风险工作量、成本策略、Lift/Gain、阈值敏感性和错误分析结论。 |
+| `notebooks/20_sql_business_insights_and_visualization.ipynb` | Day20 展示 notebook，只读取 Day19/Day20 CSV 和 final figures，不连接 MySQL。 |
+
+Day20 当前业务结论：最终候选仍是 Day14 `median_all_structural_all`，official test threshold=0.18、FP=398、FN=12、total_cost=9980；Day6 的 8640 仍是 test 回溯观察，Day16 tuned 没有泛化，Day18 ensemble 未满足进入 official test 条件。

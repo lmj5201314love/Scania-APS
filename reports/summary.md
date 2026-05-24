@@ -1197,3 +1197,43 @@ Day19 不做建模、不重新选择阈值，也不连接 MySQL。本轮将当�
 - `sql/14_threshold_sensitivity_analysis.sql`：基于 final candidate 概率展示阈值变化对工作量、FN、recall、F2 和 total cost 的影响。
 
 Day19 的关键边界：`sample_id` 只是匿名样本编号，不是真实车辆 ID；SQL 中的 `@fp_cost=10` 和 `@fn_cost=500` 需要人工与 `config/config.yaml` 保持一致；当前最终候选仍是 Day14 `median_all_structural_all`，threshold 保持 `0.18`。
+
+## Day 20 SQL Business Insights & Visualization
+
+Day20 不建模、不重新训练、不重新选择 threshold，也不连接 MySQL。本轮只读取 Day19 `outputs/sql_exports/` 中的 `model_prediction_results.csv`、`model_policy_comparison.csv` 和 `threshold_sensitivity_results.csv`，把 SQL 业务分析结果转成可插入 README / report 的 final tables、final figures 和 `reports/sql_business_insights.md`。
+
+新增脚本：
+
+- `scripts/18_generate_business_insight_figures.py`：读取 Day19 CSV，生成业务洞察汇总表、PNG 图表和 SQL business insights 报告。
+
+新增 final tables：
+
+- `outputs/tables/final/final_topk_maintenance_capacity.csv`
+- `outputs/tables/final/final_risk_workload_summary.csv`
+- `outputs/tables/final/final_error_breakdown_summary.csv`
+- `outputs/tables/final/final_decile_lift_gain_summary.csv`
+- `outputs/tables/final/final_threshold_sensitivity_summary.csv`
+- `outputs/tables/final/final_threshold_policy_highlights.csv`
+- `outputs/tables/final/final_policy_cost_comparison.csv`
+
+新增 final figures：
+
+- `outputs/figures/final/final_cost_policy_comparison.png`
+- `outputs/figures/final/final_topk_maintenance_capacity.png`
+- `outputs/figures/final/final_risk_level_workload.png`
+- `outputs/figures/final/final_decile_lift_gain.png`
+- `outputs/figures/final/final_threshold_sensitivity.png`
+- `outputs/figures/final/final_threshold_fn_curve.png`
+- `outputs/figures/final/final_threshold_workload_curve.png`
+- `outputs/figures/final/final_confusion_error_breakdown.png`
+
+关键业务洞察：
+
+1. 当前最终候选仍是 Day14 `median_all_structural_all`，official test threshold=0.18，FP=398，FN=12，total_cost=9980。Day16 tuned 没有泛化，Day18 ensemble 未满足进入 official test 条件，Day6 的 8640 仍只是 test 回溯观察。
+2. Top-K 维修容量分析显示排序有业务价值：Top 50 命中 50 个真实故障，Top 100 命中 100 个，Top 200 命中 194 个，Top 500 命中 340 个，Top 1000 命中 369 个；对应 recall@K 分别为 13.33%、26.67%、51.73%、90.67%、98.40%。
+3. 风险等级工作量显示：Critical 404 个样本、真实故障率 78.22%；High 321 个样本、真实故障率 14.33%；Medium 414 个样本、真实故障率 1.93%；Low 14861 个样本、真实故障率 0.03%。Critical / High 适合作为优先检修队列，但 High 会带来较多 FP 工作量。
+4. 成本策略对比显示：naive_all_negative total_cost=187500，Day14 baseline=10820，Day14 final candidate=9980，Day16 tuned best=11260。final candidate 相对 naive baseline 降低 177520 成本，下降率 94.68%；相对 Day14 baseline 降低 840 成本。
+5. Decile / Lift / Gain 显示最高风险 10% 样本显著富集真实故障：decile=1 pos_rate=23.31%，overall_pos_rate=2.34%，lift=9.95，cumulative_recall@decile1=99.47%。
+6. 阈值敏感性显示 final threshold=0.18 的工作量为 761 个预测正类，FP=398，FN=12，total_cost=9980；threshold=0.07 在敏感性表中 total_cost=9470、FN=6、工作量=1016，但该结果只用于策略展示，不能反向修改最终阈值。
+
+适合 README 的图包括 `final_cost_policy_comparison.png`、`final_topk_maintenance_capacity.png`、`final_risk_level_workload.png`、`final_decile_lift_gain.png` 和 `final_threshold_sensitivity.png`。下一步 Day21 可以进入模型解释性 / SHAP 分析，重点看 FN 和高置信 FP 样本。

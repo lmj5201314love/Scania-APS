@@ -1,0 +1,5 @@
+﻿risk_level,suggested_action,sample_count,actual_pos_count,predicted_pos_count,actual_pos_rate,predicted_pos_rate,avg_predicted_probability,tp_count,fp_count,fn_count,estimated_workload,priority_order
+Critical,immediate_inspection,404,316,404,0.7821782178217822,1.0,0.9623729731435643,316,88,0,404,1
+High,priority_inspection,321,46,321,0.14330218068535824,1.0,0.45476714249221184,46,275,0,321,2
+Medium,monitor_and_recheck,414,8,36,0.01932367149758454,0.08695652173913043,0.10507912378502415,1,35,7,414,3
+Low,no_action_now,14861,5,0,0.0003364511136531862,0.0,0.003503498667991723,0,0,5,14861,4

@@ -1,0 +1,8 @@
+﻿policy_rule,threshold,predicted_positive_count,workload_rate,fp,fn,precision,recall,f2,total_cost,note
+final_threshold_018,0.18,761.0,0.0475625,398.0,12.0,0.4770039421813403,0.968,0.8027421494913755,9980.0,Current Day14 final threshold. Sensitivity table is not used to change it.
+min_cost_threshold,0.07,1016.0,0.0635,647.0,6.0,0.3631889763779528,0.984,0.7333068362480127,9470.0,Minimum total cost in the threshold sensitivity curve.
+min_cost_with_recall_ge_096,0.07,1016.0,0.0635,647.0,6.0,0.3631889763779528,0.984,0.7333068362480127,9470.0,Minimum cost while keeping recall >= 0.96.
+min_cost_with_recall_ge_097,0.07,1016.0,0.0635,647.0,6.0,0.3631889763779528,0.984,0.7333068362480127,9470.0,Minimum cost while keeping recall >= 0.97.
+min_cost_with_fn_le_15,0.07,1016.0,0.0635,647.0,6.0,0.3631889763779528,0.984,0.7333068362480127,9470.0,Minimum cost while keeping FN <= 15.
+min_cost_with_fn_le_12,0.07,1016.0,0.0635,647.0,6.0,0.3631889763779528,0.984,0.7333068362480127,9470.0,"Minimum cost while keeping FN <= 12, if feasible."
+min_workload_under_cost_near_final,0.22,703.0,0.0439375,341.0,13.0,0.5149359886201992,0.9653333333333334,0.8216068996822515,9910.0,Lowest workload among thresholds with total cost within 10% of the current final threshold; diagnostic only.

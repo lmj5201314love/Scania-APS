@@ -418,3 +418,86 @@ Day19 生成 `outputs/sql_exports/model_prediction_results.csv`，并准备导�
 `sql/12_model_monitoring_template.sql` 提供未来上线后的批次监控模板，包括预测量、predicted positive rate、risk level 占比、score 分布漂移、缺失率漂移和高风险样本数量变化。当前项目没有真实线上数据，因此该文件只是 template，不代表已有生产监控结果。
 
 Day19 的 SQL 深化让项目从“模型得分展示”进一步落到“维修资源决策支持”：不是只问模型准不准，而是问有限维修能力下先查哪些样本、漏报在哪里、误报带来多少额外工作量，以及未来上线后如何监控模型是否失效。
+
+## SQL Business Insights and Visualization
+
+Day20 在 Day19 SQL exports 的基础上进一步生成可读业务洞察和 README/report 图表。本轮不建模、不重新训练、不重新选择 threshold、不连接 MySQL，也不修改 `data/raw/`。输入只包括：
+
+- `outputs/sql_exports/model_prediction_results.csv`
+- `outputs/sql_exports/model_policy_comparison.csv`
+- `outputs/sql_exports/threshold_sensitivity_results.csv`
+
+本轮新增 `scripts/18_generate_business_insight_figures.py`，将上述 CSV 转换为 `outputs/tables/final/` 下的业务汇总表、`outputs/figures/final/` 下的 PNG 图表，并生成 `reports/sql_business_insights.md`。
+
+### Top-K 维修容量
+
+Top-K 维修容量分析回答的是：如果维修团队每天或每周只能检查固定数量的高风险匿名样本，能覆盖多少真实 APS 故障。基于 Day14 final candidate 的 official test 概率排序：
+
+| Top-K | 命中真实故障数 | recall@K | precision@K |
+|---:|---:|---:|---:|
+| 50 | 50 | 13.33% | 100.00% |
+| 100 | 100 | 26.67% | 100.00% |
+| 200 | 194 | 51.73% | 97.00% |
+| 500 | 340 | 90.67% | 68.00% |
+| 1000 | 369 | 98.40% | 36.90% |
+
+这说明模型概率排序对维修排队有明确价值：当维修容量有限时，优先检查最高风险队列能覆盖大量真实 APS 故障。
+
+![Top-K maintenance capacity](../outputs/figures/final/final_topk_maintenance_capacity.png)
+
+### 风险等级与维修工作量
+
+风险等级汇总显示：
+
+| Risk Level | 样本数 | 真实故障数 | 真实故障率 | 建议动作 |
+|---|---:|---:|---:|---|
+| Critical | 404 | 316 | 78.22% | immediate_inspection |
+| High | 321 | 46 | 14.33% | priority_inspection |
+| Medium | 414 | 8 | 1.93% | monitor_and_recheck |
+| Low | 14861 | 5 | 0.03% | no_action_now |
+
+Critical / High 是最适合优先检修的层级。High 队列的真实故障率明显高于整体正类率，但也包含较多 FP，因此业务上应把它解释为“优先检查队列”，而不是“确定故障车辆”。`sample_id` 仍然只能解释为匿名样本编号，不是真实车辆 ID。
+
+![Risk workload](../outputs/figures/final/final_risk_level_workload.png)
+
+### 成本策略对比
+
+Day20 成本对比只在 official test policy 内横向比较，不把 OOF train 结果混入同一排名：
+
+| Policy | Dataset | FP | FN | Total Cost |
+|---|---|---:|---:|---:|
+| naive_all_negative | official_test | 0 | 375 | 187500 |
+| day14_baseline_median_all | official_test | 432 | 13 | 10820 |
+| day14_structural_all_final_candidate | official_test | 398 | 12 | 9980 |
+| day16_tuned_best | official_test | 376 | 15 | 11260 |
+
+当前最终候选 Day14 `median_all_structural_all` 相对 naive baseline 降低 177520 成本，下降率 94.68%；相对 Day14 baseline 降低 840 成本。Day16 tuned best 没有超过 Day14 final candidate，说明 Day15 的 valid 调参收益没有稳定泛化。
+
+![Cost policy comparison](../outputs/figures/final/final_cost_policy_comparison.png)
+
+### Decile / Lift / Gain
+
+Decile 分析显示最高风险 10% 样本高度富集真实 APS 故障：
+
+- decile=1 pos_rate = 23.31%
+- overall_pos_rate = 2.34%
+- decile=1 lift = 9.95
+- cumulative_recall@decile1 = 99.47%
+- cumulative_recall@decile2 = 99.47%
+- cumulative_recall@decile3 = 99.73%
+
+这进一步支持“优先检修高风险匿名样本”的维修排序逻辑，而不是平均分配维修资源。
+
+![Decile lift gain](../outputs/figures/final/final_decile_lift_gain.png)
+
+### 阈值敏感性与错误分析
+
+阈值敏感性表显示，当前 final threshold=0.18 时，predicted positive 工作量为 761，FP=398，FN=12，recall=96.80%，total_cost=9980。敏感性曲线中的 min cost threshold 为 0.07，工作量为 1016，FP=647，FN=6，total_cost=9470。这个结果只用于说明“更低阈值可以换取更少漏报但增加维修工作量”，不能用来反向修改最终 threshold。
+
+错误分析显示 final candidate 的 TP=363、FP=398、TN=15227、FN=12；FN 分布在 Medium 7 个、Low 5 个，FP 分布在 Critical 88 个、High 275 个、Medium 35 个。Day21 的解释性分析可以优先聚焦 FN 和高置信 FP 样本，但不能虚构匿名字段的真实物理含义。
+
+![Threshold sensitivity](../outputs/figures/final/final_threshold_sensitivity.png)
+
+![Confusion error breakdown](../outputs/figures/final/final_confusion_error_breakdown.png)
+
+Day20 让项目从“SQL 已经准备好”推进到“SQL 结果可以被业务阅读”：维修团队可以看到有限容量下先查哪些样本、不同风险层级对应多少工作量、成本策略之间差多少、模型排序是否真的富集故障，以及阈值变化会如何影响漏报和工作量。当前最终候选仍保留 Day14 `median_all_structural_all`，official test total_cost=9980。

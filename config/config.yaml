@@ -1,6 +1,6 @@
 project:
   name: scania_aps_predictive_maintenance
-  stage: day19_sql_business_analysis
+  stage: day20_sql_business_insights_visualization
 
 paths:
   train_raw: data/raw/aps_failure_training_set.csv

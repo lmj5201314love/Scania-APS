@@ -349,3 +349,21 @@ Day 19 不继续追模型分数，转向 SQL 业务交付分析。核心目标�
 - `notebooks/19_sql_business_analysis.ipynb`：如需在无 MySQL 环境下快速预览 SQL 业务分析结果，可读取 `outputs/sql_exports/` CSV 进行本地展示。
 
 Day 19 的 SQL 输出用于业务分析和面试讲述，不连接 MySQL、不导入 MySQL、不修改 `data/raw/`，也不改变 Day14 final candidate。
+
+## Day 20 SQL Business Insights & Visualization
+
+Day20 不继续建模，也不连接 MySQL。本轮只读取 Day19 `outputs/sql_exports/` CSV，把 SQL 业务分析结果转成 final tables、final figures 和可读业务洞察报告，服务 README、项目报告和面试复述。
+
+Day20 新增文件如下：
+
+- `scripts/18_generate_business_insight_figures.py`：读取 Day19 SQL exports，生成 final tables、PNG 图表和 `reports/sql_business_insights.md`。脚本不重新训练模型、不重新选择 threshold、不修改 `data/raw/`。
+- `notebooks/20_sql_business_insights_and_visualization.ipynb`：展示 Day20 的 Top-K、风险工作量、成本策略、decile/lift/gain、阈值敏感性和错误分析结果。
+- `reports/sql_business_insights.md`：面向 README 和面试复述的 SQL business insights 报告。
+- `tests/test_business_insight_outputs.py`：使用小型模拟数据测试 Day20 汇总函数，不依赖真实 Scania 大文件、不连接 MySQL。
+
+Day20 新增输出目录如下：
+
+- `outputs/tables/final/`：保存 final Top-K、risk workload、error breakdown、decile/lift/gain、threshold sensitivity、policy comparison 等 CSV。
+- `outputs/figures/final/`：保存 README/report 可引用的 final PNG 图表。
+
+Day20 边界：当前最终候选仍是 Day14 `median_all_structural_all`，official test threshold=0.18、FP=398、FN=12、total_cost=9980；threshold sensitivity 只用于策略敏感性展示，不能用于反向修改最终阈值。

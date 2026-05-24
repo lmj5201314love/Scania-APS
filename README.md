@@ -218,16 +218,43 @@ docs/project_structure.md
 > 构建 Logistic / Random Forest / XGBoost 模型，并基于 FP=10、FN=500 的业务成本进行阈值优化；
 > 将测试集回溯 total cost 从 naive baseline 的 187,500 降至 8,640，同时输出风险分层和维修优先级建议。
 
-## 当前增强阶段：Controlled XGBoost Tuning
+## 历史增强阶段：Controlled XGBoost Tuning
 
 项目已完成 Day10/11 字段级与前缀组结构信号诊断、Day12 结构特征设计、Day13 结构特征 valid-only 实验和 Day14 official test 最终观察。当前进入 Day15：Controlled XGBoost Tuning。
 
 Day15 只使用 official train 内部划分的 `train_inner / valid`，不使用 official test 做参数、特征方案或阈值选择。本轮采用 two-stage randomized search，而不是全组合 GridSearch；valid 最优结果只用于筛选 Day16 official test 观察候选，不能写成最终模型。
 
-## 当前增强阶段：Day17 OOF Threshold Selection
+## 历史增强阶段：Day17 OOF Threshold Selection
 
 Day16 显示单一 validation split 上调出的 XGBoost 参数和阈值没有稳定泛化到 official test。项目当前进入 Day17：引入 OOF / Repeated CV 阈值选择与 Recall/FN floor，用于缓解单一 validation split 阈值不稳定问题，并验证匿名 histogram/bin-like 前缀组投影特征是否提供额外结构信号。Day17 不使用 official test，不重新做 GridSearch，不做 SHAP / PCA / SVM / LightGBM / CatBoost。
 
-## 当前增强阶段：Day18 OOF Probability Ensemble
+## 历史增强阶段：Day18 OOF Probability Ensemble
 
 Day18 在 OOF 框架下评估多策略概率平均，用于判断 `structural_all` 与 recall 型方案（selected missing indicators、prefix zero rate）是否存在可泛化互补。本轮不使用 official test、不做权重搜索、不使用 Day15 tuned models；OOF 结果仅用于决定是否存在值得进入后续 official test 观察的少数候选。
+
+## 当前阶段：SQL Business Insights and Visualization
+
+项目当前进入 Day20：SQL business insights and visualization stage。本轮不建模、不重新训练、不重新选择 threshold、不连接 MySQL，只读取 Day19 `outputs/sql_exports/` CSV，把维修容量、风险工作量、成本策略、Lift/Gain、阈值敏感性和错误分析转成可读业务图表与报告。
+
+当前最终候选仍是 Day14 `structural_all / median_all_structural_all`：
+
+- official test threshold = `0.18`
+- FP = `398`
+- FN = `12`
+- total_cost = `9980`
+
+边界说明：Day6 的 `8640` 是 test 回溯观察，不作为最终严谨主结果；Day16 tuned 方案没有在 official test 上稳定泛化；Day18 ensemble 未满足进入 official test 的 OOF 筛选条件。
+
+## Business Insights Preview
+
+详细结果见 `reports/sql_business_insights.md`。以下图表均由 Day19 CSV 实际计算生成，适合 README 和面试复述使用。
+
+![Cost policy comparison](outputs/figures/final/final_cost_policy_comparison.png)
+
+![Top-K maintenance capacity](outputs/figures/final/final_topk_maintenance_capacity.png)
+
+![Risk level workload](outputs/figures/final/final_risk_level_workload.png)
+
+![Decile lift gain](outputs/figures/final/final_decile_lift_gain.png)
+
+![Threshold sensitivity](outputs/figures/final/final_threshold_sensitivity.png)
