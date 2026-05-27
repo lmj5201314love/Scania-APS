@@ -470,3 +470,37 @@ Day20 不做建模、不重新选择 threshold、不连接 MySQL，只读取 Day
 | `notebooks/20_sql_business_insights_and_visualization.ipynb` | Day20 展示 notebook，只读取 Day19/Day20 CSV 和 final figures，不连接 MySQL。 |
 
 Day20 当前业务结论：最终候选仍是 Day14 `median_all_structural_all`，official test threshold=0.18、FP=398、FN=12、total_cost=9980；Day6 的 8640 仍是 test 回溯观察，Day16 tuned 没有泛化，Day18 ensemble 未满足进入 official test 条件。
+
+## Day 21 Model interpretability and presentation audit
+
+Day21 复现 Day14 `median_all_structural_all` final candidate 用于解释性分析。本轮允许重新 fit 同配置模型，但不调参、不重新选择 threshold、不根据解释结果改模型、不修改 `data/raw/`。
+
+### Day21 interpretability tables
+
+| 文件 | 说明 |
+|---|---|
+| `outputs/tables/final/final_xgb_feature_importance_top50.csv` | XGBoost weight/gain/cover importance Top 50，主排序使用 gain。 |
+| `outputs/tables/final/final_permutation_importance_top30.csv` | official test 抽样子集上，对 gain Top 30 特征计算 permutation importance。 |
+| `outputs/tables/final/final_shap_mean_abs_top50.csv` | SHAP mean absolute value Top 50，全局解释模型评分贡献。 |
+| `outputs/tables/final/final_feature_family_importance_summary.csv` | 按 raw、missing indicator、sample structural、prefix zero 等 feature family 汇总贡献。 |
+| `outputs/tables/final/final_fn_shap_case_analysis.csv` | FN 样本局部 SHAP 解释，用于人工复核漏报风险。 |
+| `outputs/tables/final/final_high_risk_tp_shap_case_analysis.csv` | 高风险 TP 样本局部 SHAP 解释。 |
+| `outputs/tables/final/final_high_confidence_fp_shap_case_analysis.csv` | 高置信 FP 样本局部 SHAP 解释。 |
+
+### Day21 interpretability figures
+
+| 文件 | 说明 |
+|---|---|
+| `outputs/figures/final/final_xgb_gain_importance_top20.png` | XGBoost gain importance Top 20。 |
+| `outputs/figures/final/final_permutation_importance_top20.png` | Permutation importance Top 20。 |
+| `outputs/figures/final/final_shap_bar_top20.png` | SHAP mean absolute value Top 20 bar chart。 |
+| `outputs/figures/final/final_shap_summary_top20.png` | SHAP summary plot Top 20。 |
+| `outputs/figures/final/final_feature_family_importance.png` | Feature family contribution summary。 |
+
+### Day21 reports and notebook
+
+| 文件 | 说明 |
+|---|---|
+| `reports/model_interpretability.md` | 模型解释性报告，包含 gain、permutation、SHAP、feature family 和 case analysis。 |
+| `reports/readme_presentation_audit.md` | README 展示审计报告，为 Day22 最终 README 改版提供结构建议。 |
+| `notebooks/21_model_interpretability.ipynb` | Day21 展示 notebook，只读取/展示解释性输出，不调参、不改 threshold。 |

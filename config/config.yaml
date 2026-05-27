@@ -1,6 +1,6 @@
 project:
   name: scania_aps_predictive_maintenance
-  stage: day20_sql_business_insights_visualization
+  stage: day21_model_interpretability_presentation_audit
 
 paths:
   train_raw: data/raw/aps_failure_training_set.csv

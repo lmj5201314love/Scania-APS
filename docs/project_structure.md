@@ -367,3 +367,37 @@ Day20 新增输出目录如下：
 - `outputs/figures/final/`：保存 README/report 可引用的 final PNG 图表。
 
 Day20 边界：当前最终候选仍是 Day14 `median_all_structural_all`，official test threshold=0.18、FP=398、FN=12、total_cost=9980；threshold sensitivity 只用于策略敏感性展示，不能用于反向修改最终阈值。
+
+## Day 21 Model Interpretability & Presentation Audit
+
+Day21 进入模型解释性和最终展示审计阶段。本轮允许为了复现 Day14 final candidate 重新 fit 同配置模型，但不调参、不重新选择 threshold、不根据解释结果改模型、不修改 `data/raw/`。
+
+Day21 新增文件如下：
+
+- `src/scania_aps/interpretability/__init__.py`：解释性分析包入口。
+- `src/scania_aps/interpretability/model_interpretability.py`：复现 Day14 final candidate、计算 XGBoost importance、permutation importance、SHAP importance、feature family summary 和 case explanation tables。
+- `scripts/19_model_interpretability.py`：运行 Day21 解释性分析，生成 final tables、final figures 和报告。
+- `notebooks/21_model_interpretability.ipynb`：展示 Day21 解释性输出，不调参、不改 threshold。
+- `reports/model_interpretability.md`：模型解释性报告。
+- `reports/readme_presentation_audit.md`：README 展示审计报告，供 Day22 最终 README 改版使用。
+- `tests/test_model_interpretability_schema.py`：使用小型模拟数据测试解释性输出 schema，不依赖真实 Scania 大文件。
+
+Day21 新增 final tables：
+
+- `outputs/tables/final/final_xgb_feature_importance_top50.csv`
+- `outputs/tables/final/final_permutation_importance_top30.csv`
+- `outputs/tables/final/final_shap_mean_abs_top50.csv`
+- `outputs/tables/final/final_feature_family_importance_summary.csv`
+- `outputs/tables/final/final_fn_shap_case_analysis.csv`
+- `outputs/tables/final/final_high_risk_tp_shap_case_analysis.csv`
+- `outputs/tables/final/final_high_confidence_fp_shap_case_analysis.csv`
+
+Day21 新增 final figures：
+
+- `outputs/figures/final/final_xgb_gain_importance_top20.png`
+- `outputs/figures/final/final_permutation_importance_top20.png`
+- `outputs/figures/final/final_shap_bar_top20.png`
+- `outputs/figures/final/final_shap_summary_top20.png`
+- `outputs/figures/final/final_feature_family_importance.png`
+
+Day21 解释边界：SHAP / importance 只解释模型评分贡献，不能解释匿名字段真实物理含义；`sample_id` 仍然只是匿名样本编号，不是真实车辆 ID。

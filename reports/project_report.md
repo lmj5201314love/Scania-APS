@@ -501,3 +501,73 @@ Decile 分析显示最高风险 10% 样本高度富集真实 APS 故障：
 ![Confusion error breakdown](../outputs/figures/final/final_confusion_error_breakdown.png)
 
 Day20 让项目从“SQL 已经准备好”推进到“SQL 结果可以被业务阅读”：维修团队可以看到有限容量下先查哪些样本、不同风险层级对应多少工作量、成本策略之间差多少、模型排序是否真的富集故障，以及阈值变化会如何影响漏报和工作量。当前最终候选仍保留 Day14 `median_all_structural_all`，official test total_cost=9980。
+
+## Model Interpretability and Feature Contribution Analysis
+
+Day21 在 Day20 业务洞察之后进入模型解释性分析。本轮解释对象固定为 Day14 `structural_all / median_all_structural_all` final candidate，threshold 固定为 0.18。脚本 `scripts/19_model_interpretability.py` 重新 fit 一次同配置模型用于解释性分析，复现结果与 Day14 official test 一致：FP=398、FN=12、TP=363、TN=15227、total_cost=9980。本轮没有调参、没有重新选择 threshold，也没有根据解释性结果修改模型。
+
+### XGBoost Gain Importance
+
+XGBoost gain importance Top 10 为：
+
+| Rank | Feature | Family |
+|---:|---|---|
+| 1 | ck_000 | raw_feature |
+| 2 | aa_000 | raw_feature |
+| 3 | ci_000 | raw_feature |
+| 4 | ba_002 | raw_feature |
+| 5 | cs_002 | raw_feature |
+| 6 | cc_000 | raw_feature |
+| 7 | dn_000 | raw_feature |
+| 8 | az_000 | raw_feature |
+| 9 | prefix_cn_zero_rate | prefix_zero_feature |
+| 10 | missing_br_000 | missing_indicator |
+
+Top 20 中有 18 个 raw features，2 个 structural / indicator features。这个结果说明模型主体仍依赖原始匿名数值字段，但 `prefix_cn_zero_rate` 和 `missing_br_000` 进入前列，说明结构特征和缺失指示信号确实被 XGBoost 使用。需要强调的是，这些字段名是匿名字段名，不能解释为具体传感器或部件。
+
+![XGBoost gain importance](../outputs/figures/final/final_xgb_gain_importance_top20.png)
+
+### Permutation Importance
+
+Permutation importance 在 official test 抽样子集上对 gain Top 30 特征做扰动。AP drop Top 10 为 `ag_002`、`ck_000`、`aa_000`、`bx_000`、`bj_000`、`cc_000`、`cn_000`、`dq_000`、`ci_000`、`do_000`。Permutation importance 与 gain importance 不完全一致，这是树模型解释中常见现象：gain 反映树 split 中的收益，permutation 反映在固定评估样本上打乱某个特征后的排序/分类损失，两者会受到特征相关性、冗余匿名字段和模型 split 偏好的影响。
+
+![Permutation importance](../outputs/figures/final/final_permutation_importance_top20.png)
+
+### SHAP Global Explanation
+
+SHAP mean absolute value Top 10 为 `aa_000`、`ck_000`、`ci_000`、`ay_008`、`ai_000`、`cc_000`、`ay_006`、`aq_000`、`cb_000`、`bi_000`。当前环境中 `shap.TreeExplainer` 对 XGBoost 模型解析失败，脚本使用 XGBoost `pred_contribs=True` fallback 生成树模型 SHAP 贡献值，并在 `reports/model_interpretability.md` 中记录该说明。
+
+SHAP 结果再次显示原始匿名数值字段贡献最大。SHAP 的解释对象是模型评分，不是物理系统，因此不能把 `aa_000`、`ck_000` 等字段解释为真实传感器。
+
+![SHAP bar](../outputs/figures/final/final_shap_bar_top20.png)
+
+![SHAP summary](../outputs/figures/final/final_shap_summary_top20.png)
+
+### Feature Family 贡献
+
+按 feature family 汇总后：
+
+| Feature family | feature_count | xgb_gain_share | mean_abs_shap_share |
+|---|---:|---:|---:|
+| raw_feature | 168 | 92.92% | 96.07% |
+| sample_structural_feature | 6 | 1.74% | 1.60% |
+| prefix_zero_feature | 10 | 2.95% | 1.31% |
+| unknown | 2 | 0.83% | 0.77% |
+| missing_indicator | 30 | 1.56% | 0.24% |
+| prefix_missing_feature | 14 | 0.00% | 0.00% |
+
+这说明结构特征不是模型主体，但它们提供了可观察的补充信号。这个结果与 Day10-Day14 的结论一致：缺失、零值和前缀聚合信号有统计价值，但不能脱离原始匿名数值字段单独成为主线。
+
+![Feature family importance](../outputs/figures/final/final_feature_family_importance.png)
+
+### FN / FP / TP Case Analysis
+
+Day21 生成了三类局部解释表：
+
+- `final_fn_shap_case_analysis.csv`：覆盖 12 个 FN 样本，用于人工复核漏报风险。常见正向贡献特征包括 `aa_000`、`cs_002`、`cc_000`、`bc_000`、`bi_000`，但这些样本仍未超过 threshold=0.18。
+- `final_high_risk_tp_shap_case_analysis.csv`：高风险 TP 样本中常见正向贡献特征包括 `ag_002`、`aa_000`、`ck_000`、`ag_001`、`ee_005`。
+- `final_high_confidence_fp_shap_case_analysis.csv`：高置信 FP 样本中常见正向贡献特征包括 `ck_000`、`aa_000`、`ci_000`、`aq_000`、`ai_000`。
+
+这些 case analysis 支持后续人工复核和面试讲述：模型不是完全黑箱，但字段匿名限制了物理解释。局部 SHAP 只能说明“哪些字段在模型评分层面推高或压低风险”，不能说明真实车辆故障原因，`sample_id` 也不能说成真实车辆编号。
+
+Day21 还生成 `reports/readme_presentation_audit.md`，用于 Day22 最终 README 改版。审计建议把 Day6 test 回溯结果移出核心结果区，把 Day14 final candidate、Day20 business insights 和 Day21 interpretability 作为最终展示主线。

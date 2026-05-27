@@ -1237,3 +1237,35 @@ Day20 不建模、不重新训练、不重新选择 threshold，也不连接 MyS
 6. 阈值敏感性显示 final threshold=0.18 的工作量为 761 个预测正类，FP=398，FN=12，total_cost=9980；threshold=0.07 在敏感性表中 total_cost=9470、FN=6、工作量=1016，但该结果只用于策略展示，不能反向修改最终阈值。
 
 适合 README 的图包括 `final_cost_policy_comparison.png`、`final_topk_maintenance_capacity.png`、`final_risk_level_workload.png`、`final_decile_lift_gain.png` 和 `final_threshold_sensitivity.png`。下一步 Day21 可以进入模型解释性 / SHAP 分析，重点看 FN 和高置信 FP 样本。
+
+## Day 21 Model Interpretability, SHAP Analysis & Presentation Audit
+
+Day21 的目标是解释当前最终候选 Day14 `median_all_structural_all`，而不是继续追模型分数。本轮允许重新 fit 一次同配置 XGBoost 模型，用于复现 final candidate 和计算解释性指标；没有调参、没有重新选择 threshold、没有根据解释结果改模型，也没有修改 `data/raw/`。复现结果与 Day14 official test 一致：FP=398，FN=12，TP=363，TN=15227，total_cost=9980。
+
+新增解释性输出表：
+
+- `outputs/tables/final/final_xgb_feature_importance_top50.csv`
+- `outputs/tables/final/final_permutation_importance_top30.csv`
+- `outputs/tables/final/final_shap_mean_abs_top50.csv`
+- `outputs/tables/final/final_feature_family_importance_summary.csv`
+- `outputs/tables/final/final_fn_shap_case_analysis.csv`
+- `outputs/tables/final/final_high_risk_tp_shap_case_analysis.csv`
+- `outputs/tables/final/final_high_confidence_fp_shap_case_analysis.csv`
+
+新增解释性图表：
+
+- `outputs/figures/final/final_xgb_gain_importance_top20.png`
+- `outputs/figures/final/final_permutation_importance_top20.png`
+- `outputs/figures/final/final_shap_bar_top20.png`
+- `outputs/figures/final/final_shap_summary_top20.png`
+- `outputs/figures/final/final_feature_family_importance.png`
+
+关键发现：
+
+1. XGBoost gain Top 10 为 `ck_000`、`aa_000`、`ci_000`、`ba_002`、`cs_002`、`cc_000`、`dn_000`、`az_000`、`prefix_cn_zero_rate`、`missing_br_000`。Top 20 中有 18 个 raw features，2 个结构/indicator 特征，说明模型主体仍依赖原始匿名数值字段，但结构特征确实进入了重要性前列。
+2. Permutation importance Top 10 为 `ag_002`、`ck_000`、`aa_000`、`bx_000`、`bj_000`、`cc_000`、`cn_000`、`dq_000`、`ci_000`、`do_000`。它与 gain importance 不完全一致，可能来自特征相关性、树 split 偏好和匿名字段冗余。
+3. SHAP mean_abs Top 10 为 `aa_000`、`ck_000`、`ci_000`、`ay_008`、`ai_000`、`cc_000`、`ay_006`、`aq_000`、`cb_000`、`bi_000`。`shap.TreeExplainer` 在当前 XGBoost 模型解析上失败，脚本已使用 XGBoost `pred_contribs=True` fallback 生成 SHAP 贡献值，并在报告中说明。
+4. Feature family 贡献显示 raw_feature 占主导：xgb_gain_share=92.92%，mean_abs_shap_share=96.07%。sample_structural_feature、prefix_zero_feature、missing_indicator 也有少量贡献，说明 Day10-Day14 的结构信号并非完全无效，但不是模型主体。
+5. FN case analysis 覆盖 12 个 FN 样本，常见正向贡献特征包括 `aa_000`、`cs_002`、`cc_000`、`bc_000`、`bi_000`；高风险 TP 常见贡献包括 `ag_002`、`aa_000`、`ck_000`、`ag_001`、`ee_005`；高置信 FP 常见贡献包括 `ck_000`、`aa_000`、`ci_000`、`aq_000`、`ai_000`。这些只表示模型评分层面的贡献，不代表真实物理故障原因。
+
+本轮还新增 `reports/model_interpretability.md` 和 `reports/readme_presentation_audit.md`。README 审计建议 Day22 将 Day6 回溯结果移出核心位置，把 Day14 final candidate、Day20 business insights 和 Day21 interpretability 放到更清晰的最终展示结构中。下一步 Day22 建议进入最终 README 改版、仓库清理和简历 bullet 整理。

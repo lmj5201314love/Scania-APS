@@ -232,9 +232,9 @@ Day16 显示单一 validation split 上调出的 XGBoost 参数和阈值没有�
 
 Day18 在 OOF 框架下评估多策略概率平均，用于判断 `structural_all` 与 recall 型方案（selected missing indicators、prefix zero rate）是否存在可泛化互补。本轮不使用 official test、不做权重搜索、不使用 Day15 tuned models；OOF 结果仅用于决定是否存在值得进入后续 official test 观察的少数候选。
 
-## 当前阶段：SQL Business Insights and Visualization
+## 当前阶段：Model Interpretability and Presentation Audit
 
-项目当前进入 Day20：SQL business insights and visualization stage。本轮不建模、不重新训练、不重新选择 threshold、不连接 MySQL，只读取 Day19 `outputs/sql_exports/` CSV，把维修容量、风险工作量、成本策略、Lift/Gain、阈值敏感性和错误分析转成可读业务图表与报告。
+项目已完成 Day20：SQL business insights and visualization。本轮进入 Day21：model interpretability, SHAP analysis and presentation audit。Day21 只为了复现 Day14 final candidate 重新 fit 同配置模型用于解释性分析，不调参、不重新选择 threshold、不根据解释结果改模型，也不修改 `data/raw/`。
 
 当前最终候选仍是 Day14 `structural_all / median_all_structural_all`：
 
@@ -244,6 +244,12 @@ Day18 在 OOF 框架下评估多策略概率平均，用于判断 `structural_al
 - total_cost = `9980`
 
 边界说明：Day6 的 `8640` 是 test 回溯观察，不作为最终严谨主结果；Day16 tuned 方案没有在 official test 上稳定泛化；Day18 ensemble 未满足进入 official test 的 OOF 筛选条件。
+
+补充报告：
+
+- `reports/sql_business_insights.md`
+- `reports/model_interpretability.md`
+- `reports/readme_presentation_audit.md`
 
 ## Business Insights Preview
 
