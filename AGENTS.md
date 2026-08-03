@@ -57,7 +57,7 @@ FN 代表真实 APS 故障被漏掉，业务风险高于 FP。因此本项目不
 
 ## 当前阶段优先级
 
-当前已完成 Day 1-21 的建模、SQL 业务分析、模型解释性、README 展示改版、outputs 清理、notebook 分层和 archive 归档说明，进入 Final Packaging Day 4.5：Final Notebook De-template Cleanup and Interview-oriented Narrative Repair 阶段。当前重点是只修复 `notebooks/final/` 的 Markdown 展示内容：不使用“分析目标 / 输入与输出 / 方法概述 / 关键结论 / 结果解释 / 注意事项”的六段式前置模板，而采用问题驱动叙事，把说明放到相关代码、表格和图表附近。`notebooks/archive/` 不需要处理，除非修复 final notebook 链接。final notebook 必须使用中文展示，保留必要英文技术名词；不写学习口吻、AI 协作痕迹或不确定表达，不把匿名字段解释成真实传感器或物理部件含义。本阶段不修改 code cell、不重新运行 notebook、不清空 outputs、不建模、不重新训练、不重新选择 threshold、不重新生成 outputs、不移动 README 引用的 final figures、不修改 raw 数据；`sample_id` 只能解释为匿名样本编号，不能说成真实车辆 ID。
+当前已完成 Final Notebook 收口，进入 Final Packaging Day 5 / v1.0 Release Contract 阶段。本阶段只冻结机器可读的 release policy、评估指标命名以及训练 / 验证 / 评估范围；final candidate 仍为 Day14 `median_all_structural_all`，decision threshold 仍为 `0.18`。official test 是公开基准测试集，不是新的盲测数据；模型输出在公开叙事中称为风险分数，不称为校准概率。本阶段不重新训练、不重新选择 threshold、不修改 `data/raw/`、不重新生成 outputs、不修改 final notebook code cell。风险等级边界和动作逻辑留到下一阶段处理。
 
 ## Agent skills
 

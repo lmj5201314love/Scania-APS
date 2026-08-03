@@ -12,6 +12,26 @@ from typing import Any
 import yaml
 
 
+@dataclass(frozen=True)
+class ReleasePolicy:
+    """v1.0 发布候选的机器可读政策。"""
+
+    target_version: str
+    stage: str
+    model_version: str
+    model_name: str
+    strategy: str
+    decision_threshold: float
+    threshold_source: str
+    score_semantics: str
+    fit_dataset: str
+    fit_rows: int
+    validation_dataset: str
+    validation_rows: int
+    evaluation_dataset: str
+    evaluation_rows: int
+
+
 def find_project_root(start: Path | None = None) -> Path:
     """向上查找包含 config/config.yaml 的项目根目录。"""
 
@@ -41,11 +61,140 @@ def load_config(config_path: str | Path | None = None) -> dict[str, Any]:
     return config
 
 
+def _require_keys(section: str, values: dict[str, Any], required: list[str]) -> None:
+    """校验配置段必填字段，并返回包含完整路径的错误。"""
+
+    missing = [f"{section}.{key}" for key in required if key not in values]
+    if missing:
+        raise ValueError(f"{section} 缺少必要字段：{', '.join(missing)}")
+
+
+def _require_non_empty_text(
+    section: str,
+    values: dict[str, Any],
+    fields: list[str],
+) -> None:
+    """校验配置段中的必填文本字段。"""
+
+    for field in fields:
+        value = values[field]
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError(f"{section}.{field} 必须是非空字符串。")
+
+
+def load_release_policy(config_path: str | Path | None = None) -> ReleasePolicy:
+    """读取不依赖原始数据文件的发布政策。"""
+
+    raw_config = load_config(config_path)
+    if not isinstance(raw_config.get("release"), dict):
+        raise ValueError("config.yaml 缺少必要配置段：release")
+    release = raw_config["release"]
+    _require_keys(
+        "release",
+        release,
+        ["target_version", "stage", "final_candidate", "data_scope"],
+    )
+    if not isinstance(release.get("final_candidate"), dict):
+        raise ValueError("config.yaml 缺少必要配置段：release.final_candidate")
+    if not isinstance(release.get("data_scope"), dict):
+        raise ValueError("config.yaml 缺少必要配置段：release.data_scope")
+    final_candidate = release["final_candidate"]
+    data_scope = release["data_scope"]
+    _require_keys(
+        "release.final_candidate",
+        final_candidate,
+        [
+            "model_version",
+            "model_name",
+            "strategy",
+            "decision_threshold",
+            "threshold_source",
+            "score_semantics",
+        ],
+    )
+    _require_keys(
+        "release.data_scope",
+        data_scope,
+        [
+            "fit_dataset",
+            "fit_rows",
+            "validation_dataset",
+            "validation_rows",
+            "evaluation_dataset",
+            "evaluation_rows",
+        ],
+    )
+    _require_non_empty_text("release", release, ["target_version", "stage"])
+    _require_non_empty_text(
+        "release.final_candidate",
+        final_candidate,
+        [
+            "model_version",
+            "model_name",
+            "strategy",
+            "threshold_source",
+            "score_semantics",
+        ],
+    )
+    _require_non_empty_text(
+        "release.data_scope",
+        data_scope,
+        ["fit_dataset", "validation_dataset", "evaluation_dataset"],
+    )
+    if final_candidate["score_semantics"] != "uncalibrated_risk_score":
+        raise ValueError(
+            "release.final_candidate.score_semantics 必须是 "
+            "uncalibrated_risk_score。"
+        )
+    for row_field in ["fit_rows", "validation_rows", "evaluation_rows"]:
+        row_count = data_scope[row_field]
+        if type(row_count) is not int or row_count <= 0:
+            raise ValueError(f"release.data_scope.{row_field} 必须是正整数。")
+    if data_scope["fit_rows"] + data_scope["validation_rows"] != 60000:
+        raise ValueError(
+            "release.data_scope.fit_rows + validation_rows 必须等于 60000。"
+        )
+    if data_scope["evaluation_rows"] != 16000:
+        raise ValueError("release.data_scope.evaluation_rows 必须等于 16000。")
+    expected_datasets = {
+        "fit_dataset": "train_inner",
+        "validation_dataset": "valid",
+        "evaluation_dataset": "official_test",
+    }
+    for dataset_field, expected_value in expected_datasets.items():
+        if data_scope[dataset_field] != expected_value:
+            raise ValueError(
+                f"release.data_scope.{dataset_field} 必须是 {expected_value}。"
+            )
+    decision_threshold = final_candidate["decision_threshold"]
+    _validate_probability(
+        decision_threshold,
+        "release.final_candidate.decision_threshold",
+    )
+    return ReleasePolicy(
+        target_version=str(release["target_version"]),
+        stage=str(release["stage"]),
+        model_version=str(final_candidate["model_version"]),
+        model_name=str(final_candidate["model_name"]),
+        strategy=str(final_candidate["strategy"]),
+        decision_threshold=float(decision_threshold),
+        threshold_source=str(final_candidate["threshold_source"]),
+        score_semantics=str(final_candidate["score_semantics"]),
+        fit_dataset=str(data_scope["fit_dataset"]),
+        fit_rows=int(data_scope["fit_rows"]),
+        validation_dataset=str(data_scope["validation_dataset"]),
+        validation_rows=int(data_scope["validation_rows"]),
+        evaluation_dataset=str(data_scope["evaluation_dataset"]),
+        evaluation_rows=int(data_scope["evaluation_rows"]),
+    )
+
+
 @dataclass(frozen=True)
 class ScaniaConfig:
     """项目常用配置对象。"""
 
     project_root: Path
+    release: ReleasePolicy
     train_raw: Path
     test_raw: Path
     interim_dir: Path
@@ -106,6 +255,8 @@ def _validate_config(raw_config: dict[str, Any], project_root: Path) -> None:
     _require_sections(
         raw_config,
         [
+            "project",
+            "release",
             "paths",
             "data",
             "business_cost",
@@ -204,9 +355,11 @@ def get_config(config_path: str | Path | None = None) -> ScaniaConfig:
     raw_config = load_config(config_path)
     project_root = raw_config["_project_root"]
     _validate_config(raw_config, project_root)
+    release_policy = load_release_policy(config_path)
 
     return ScaniaConfig(
         project_root=project_root,
+        release=release_policy,
         train_raw=_resolve_project_path(project_root, raw_config["paths"]["train_raw"]),
         test_raw=_resolve_project_path(project_root, raw_config["paths"]["test_raw"]),
         interim_dir=_resolve_project_path(project_root, raw_config["paths"]["interim_dir"]),

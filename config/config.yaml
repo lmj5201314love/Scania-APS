@@ -1,6 +1,26 @@
 project:
   name: scania_aps_predictive_maintenance
-  stage: day21_model_interpretability_presentation_audit
+  stage: v1_0_release_candidate
+
+release:
+  target_version: "1.0.0"
+  stage: v1_0_release_candidate
+
+  final_candidate:
+    model_version: day14_structural_all_final_candidate
+    model_name: xgboost_scale_pos_weight
+    strategy: median_all_structural_all
+    decision_threshold: 0.18
+    threshold_source: day13_valid_best_summary
+    score_semantics: uncalibrated_risk_score
+
+  data_scope:
+    fit_dataset: train_inner
+    fit_rows: 48000
+    validation_dataset: valid
+    validation_rows: 12000
+    evaluation_dataset: official_test
+    evaluation_rows: 16000
 
 paths:
   train_raw: data/raw/aps_failure_training_set.csv
@@ -33,7 +53,7 @@ evaluation:
     - recall
     - f1
     - f2
-    - pr_auc
+    - average_precision
     - total_cost
 
 model:
