@@ -467,7 +467,7 @@ Day20 不做建模、不重新选择 threshold、不连接 MySQL，只读取 Day
 | 文件 | 说明 |
 |---|---|
 | `reports/sql_business_insights.md` | SQL business insights 报告，包含 Top-K、风险工作量、成本策略、Lift/Gain、阈值敏感性和错误分析结论。 |
-| `notebooks/20_sql_business_insights_and_visualization.ipynb` | Day20 展示 notebook，只读取 Day19/Day20 CSV 和 final figures，不连接 MySQL。 |
+| `notebooks/final/20_sql_business_insights_and_visualization.ipynb` | Day20 展示 notebook，只读取 Day19/Day20 CSV 和 final figures，不连接 MySQL。 |
 
 Day20 当前业务结论：最终候选仍是 Day14 `median_all_structural_all`，official test threshold=0.18、FP=398、FN=12、total_cost=9980；Day6 的 8640 仍是 test 回溯观察，Day16 tuned 没有泛化，Day18 ensemble 未满足进入 official test 条件。
 
@@ -503,4 +503,50 @@ Day21 复现 Day14 `median_all_structural_all` final candidate 用于解释性�
 |---|---|
 | `reports/model_interpretability.md` | 模型解释性报告，包含 gain、permutation、SHAP、feature family 和 case analysis。 |
 | `reports/readme_presentation_audit.md` | README 展示审计报告，为 Day22 最终 README 改版提供结构建议。 |
-| `notebooks/21_model_interpretability.ipynb` | Day21 展示 notebook，只读取/展示解释性输出，不调参、不改 threshold。 |
+| `notebooks/final/21_model_interpretability.ipynb` | Day21 展示 notebook，只读取/展示解释性输出，不调参、不改 threshold。 |
+
+## Final Packaging Day 2 outputs cleanup policy
+
+本阶段只整理 GitHub 展示资产与 Git 跟踪状态，不删除本地实验结果、不重新生成 outputs、不修改 `data/raw/`。
+
+### 继续上传 GitHub 的 final assets
+
+| 路径 | 说明 |
+|---|---|
+| `outputs/figures/final/*.png` | README、项目报告和最终展示使用的图表。 |
+| `outputs/tables/final/*.csv` | Day20/Day21 生成的业务洞察、阈值敏感性和解释性最终汇总表。 |
+| `outputs/sql_exports/*.csv` | Day19 生成的 SQL 业务分析导入表和 manifest。 |
+| `outputs/metrics/day14_structural_feature_test_results.csv` | 当前最终候选 Day14 `median_all_structural_all` 的 official test 指标。 |
+| `outputs/README_outputs.md` | 输出资产说明文档。 |
+
+### 本地保留但不再上传 GitHub 的 experimental artifacts
+
+| 路径模式 | 说明 |
+|---|---|
+| `outputs/predictions/*.csv` | 样本级预测明细、OOF raw / averaged predictions 和历史模型预测结果，体积较大且可由脚本再生成。 |
+| `outputs/metrics/*threshold_metrics.csv` | 阈值网格明细，适合本地调试和复核，不作为 GitHub 展示资产。 |
+| `outputs/metrics/*trial_results.csv` | 调参 trial 明细，保留本地用于复查，不继续上传。 |
+| `outputs/tables/day7_maintenance_priority_list.csv` | 早期 Day7 大型维修优先级明细，保留本地，不作为最终展示表。 |
+| `outputs/archive/` | 预留给本地归档的过程产物目录，默认不上传 GitHub。 |
+
+本次清理使用 `git rm --cached` 取消上述过程型 outputs 的 Git tracking，本地文件仍然存在。README 当前引用的 final figures、`outputs/tables/final/`、`outputs/sql_exports/` 和 Day14 final metrics 均继续保留。
+
+## Final Packaging Day 3 notebook 复现依赖说明
+
+Day3 不移动 outputs、不删除 notebook、不重新生成任何结果，只把 notebook 分成 final 和 archive 两类，并记录 archive notebook 对本地过程产物的依赖。
+
+### Notebook 分层
+
+| 路径 | 说明 |
+|---|---|
+| `notebooks/final/` | 最终展示主线 notebook，依赖 GitHub 继续保留的 final tables、final figures、sql exports 或原始数据。 |
+| `notebooks/archive/` | 历史实验 notebook，可能依赖本地保留但不再上传的预测明细、threshold grid、trial results 或 OOF 明细。 |
+| `notebooks/README.md` | 说明 final/archive 分层、每个 notebook 的用途、主要依赖和再生成入口。 |
+| `reports/notebook_reproducibility_audit.md` | 审计 notebook 依赖关系，列出缺失过程产物时应运行的脚本。 |
+
+### 对 outputs 的影响
+
+- README 当前引用的 `outputs/figures/final/*.png` 未移动。
+- `outputs/tables/final/*.csv`、`outputs/sql_exports/*.csv` 和 `outputs/metrics/day14_structural_feature_test_results.csv` 继续作为 GitHub 展示资产。
+- `outputs/predictions/*.csv`、`outputs/metrics/*threshold_metrics.csv`、`outputs/metrics/*trial_results.csv` 仍然只保留本地；archive notebook 如需这些文件，应按 `reports/notebook_reproducibility_audit.md` 中的脚本入口重新生成。
+- `data/raw/` 未修改，原始 CSV 仍需用户自行下载并放入本地。

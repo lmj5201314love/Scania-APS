@@ -57,7 +57,7 @@ FN 代表真实 APS 故障被漏掉，业务风险高于 FP。因此本项目不
 
 ## 当前阶段优先级
 
-当前已完成 Day 1-7、项目清理、validation-based model selection、缺失值/特征工程消融实验、Day 10 字段级分布诊断、Day 11 前缀组结构信号分析、Day 12 结构特征方案设计、Day 13 结构特征 valid-only 实验、Day 14 official test 最终观察、Day 15 Controlled XGBoost Tuning、Day 16 tuned XGBoost official test evaluation、Day 17 OOF threshold selection/bin projection、Day 18 OOF probability ensemble、Day 19 SQL business analysis export 和 Day 20 SQL business insights visualization，进入 Day 21 Model Interpretability and Presentation Audit 阶段。当前重点是复现 Day14 `median_all_structural_all` final candidate 用于解释性分析，生成 XGBoost gain importance、permutation importance、SHAP 全局/局部解释、feature family 贡献汇总，以及 README 展示审计报告。本阶段允许为了复现 Day14 final candidate 重新 fit 同配置模型，但不调参、不重新选择 threshold、不根据解释结果改模型、不修改 raw 数据；SHAP / importance 只能解释模型评分贡献，不能解释匿名字段真实物理含义。`sample_id` 只能解释为匿名样本编号，不能说成真实车辆 ID。
+当前已完成 Day 1-21 的建模、SQL 业务分析、模型解释性、README 展示改版、outputs 清理、notebook 分层和 archive 归档说明，进入 Final Packaging Day 4.5：Final Notebook De-template Cleanup and Interview-oriented Narrative Repair 阶段。当前重点是只修复 `notebooks/final/` 的 Markdown 展示内容：不使用“分析目标 / 输入与输出 / 方法概述 / 关键结论 / 结果解释 / 注意事项”的六段式前置模板，而采用问题驱动叙事，把说明放到相关代码、表格和图表附近。`notebooks/archive/` 不需要处理，除非修复 final notebook 链接。final notebook 必须使用中文展示，保留必要英文技术名词；不写学习口吻、AI 协作痕迹或不确定表达，不把匿名字段解释成真实传感器或物理部件含义。本阶段不修改 code cell、不重新运行 notebook、不清空 outputs、不建模、不重新训练、不重新选择 threshold、不重新生成 outputs、不移动 README 引用的 final figures、不修改 raw 数据；`sample_id` 只能解释为匿名样本编号，不能说成真实车辆 ID。
 
 ## Agent skills
 

@@ -1269,3 +1269,110 @@ Day21 的目标是解释当前最终候选 Day14 `median_all_structural_all`，�
 5. FN case analysis 覆盖 12 个 FN 样本，常见正向贡献特征包括 `aa_000`、`cs_002`、`cc_000`、`bc_000`、`bi_000`；高风险 TP 常见贡献包括 `ag_002`、`aa_000`、`ck_000`、`ag_001`、`ee_005`；高置信 FP 常见贡献包括 `ck_000`、`aa_000`、`ci_000`、`aq_000`、`ai_000`。这些只表示模型评分层面的贡献，不代表真实物理故障原因。
 
 本轮还新增 `reports/model_interpretability.md` 和 `reports/readme_presentation_audit.md`。README 审计建议 Day22 将 Day6 回溯结果移出核心位置，把 Day14 final candidate、Day20 business insights 和 Day21 interpretability 放到更清晰的最终展示结构中。下一步 Day22 建议进入最终 README 改版、仓库清理和简历 bullet 整理。
+
+## Final Packaging Day 2：outputs / .gitignore / Git tracking 清理
+
+本轮不建模、不重新训练、不重新选择 threshold、不重新生成 outputs，也不修改 `data/raw/`。目标是区分 GitHub 展示资产和本地过程产物，减少仓库体积，同时保留本地实验记录。
+
+### 继续上传的 final assets
+
+- `outputs/figures/final/*.png`：README 和报告使用的最终图表。
+- `outputs/tables/final/*.csv`：Day20/Day21 的最终业务洞察、阈值敏感性和解释性汇总表。
+- `outputs/sql_exports/*.csv`：Day19 SQL 业务分析导出。
+- `outputs/metrics/day14_structural_feature_test_results.csv`：当前最终候选 Day14 official test 指标。
+- `outputs/README_outputs.md`：输出说明文档。
+
+### 本地保留但取消 Git tracking 的过程产物
+
+- `outputs/predictions/*.csv`：历史模型预测明细、Day17/Day18 OOF raw / averaged predictions 等大文件。
+- `outputs/metrics/*threshold_metrics.csv`：阈值网格明细。
+- `outputs/metrics/*trial_results.csv`：调参 trial 明细。
+- `outputs/tables/day7_maintenance_priority_list.csv`：早期 Day7 大型维修优先级明细。
+
+这些文件通过 `git rm --cached` 取消 Git tracking，本地文件仍然存在。`.gitignore` 已补充对应规则，避免后续再次误提交。README 当前引用的 final figures、`outputs/tables/final/`、`outputs/sql_exports/` 和 Day14 final metrics 均保留。
+
+## Final Packaging Day 3：notebook 分层与复现依赖说明
+
+本轮不建模、不重新训练、不重新选择 threshold、不移动 outputs，也不删除任何 notebook。目标是把 notebook 从“全部堆在根目录”整理成更适合 GitHub 展示和复现审计的结构。
+
+### notebook 分层结果
+
+已使用 `git mv` 保留历史移动记录：
+
+- `notebooks/final/`：保留 5 个最终展示主线 notebook。
+  - `01_data_understanding.ipynb`
+  - `10_distribution_and_structural_signal_analysis.ipynb`
+  - `14_structural_feature_test_evaluation.ipynb`
+  - `20_sql_business_insights_and_visualization.ipynb`
+  - `21_model_interpretability.ipynb`
+- `notebooks/archive/`：保留 16 个历史实验 notebook，覆盖 Day2-Day9、Day11-Day13、Day15-Day19。
+
+### 新增文档
+
+- `notebooks/README.md`：说明 final/archive 分层、每个 notebook 的用途、主要依赖和再生成入口。
+- `reports/notebook_reproducibility_audit.md`：审计 notebook 对未上传 outputs 的依赖，列出缺失文件时应运行的脚本。
+
+### 复现依赖结论
+
+- final notebooks 主要依赖原始数据、Day14 final metrics、Day20/Day21 final tables、final figures 和 sql exports。
+- archive notebooks 中的 Day4-Day9、Day13、Day15-Day18 等历史实验会依赖本地保留但不再上传的 `outputs/predictions/*.csv`、`outputs/metrics/*threshold_metrics.csv`、`outputs/metrics/*trial_results.csv` 或 OOF 明细。
+- 这些过程产物未被删除；如需复查历史实验，可按 `reports/notebook_reproducibility_audit.md` 中记录的脚本重新生成。
+- README 引用的 final figures、`outputs/tables/final/`、`outputs/sql_exports/`、Day14 final metrics 和 `data/raw/` 均未移动或修改。
+
+下一步适合进入最终复现检查、报告瘦身和简历/面试材料整理。
+
+## Final Packaging Day 4：final notebook 精修与 archive 归档说明
+
+本轮不建模、不重新训练、不重新选择 threshold、不移动 outputs，也不修改 `data/raw/`。目标是提升 notebook 的展示质量：final notebooks 改成中文项目报告风格，archive notebooks 增加统一归档说明。
+
+### 精修的 final notebooks
+
+- `notebooks/final/01_data_understanding.ipynb`
+- `notebooks/final/10_distribution_and_structural_signal_analysis.ipynb`
+- `notebooks/final/14_structural_feature_test_evaluation.ipynb`
+- `notebooks/final/20_sql_business_insights_and_visualization.ipynb`
+- `notebooks/final/21_model_interpretability.ipynb`
+
+final notebook 开头已统一补充分析目标、输入与输出、方法概述、关键结论、结果解释和注意事项。展示文本以中文为主，保留必要英文技术名词，例如 XGBoost、SHAP、PR-AUC、OOF、Lift。
+
+### archive notebook 处理
+
+- `notebooks/archive/` 下 16 个历史 notebook 均已在开头加入中文归档说明。
+- archive notebook 不全文重写，继续保留原始实验脉络，用于复盘和审计。
+- 归档说明明确：部分历史 notebook 可能依赖本地保留但未上传 GitHub 的 `outputs/predictions/`、threshold metrics 或 trial results；复现前应查看 `reports/notebook_reproducibility_audit.md`。
+
+### 边界确认
+
+- 没有删除 notebook。
+- 没有修改代码计算逻辑。
+- 没有重新训练模型。
+- 没有重新选择 threshold。
+- 没有移动或重新生成 outputs。
+- 没有修改 `data/raw/`。
+
+下一步建议进入最终复现检查、报告瘦身和简历/面试材料整理。
+
+## Final Packaging Day 4.5：final notebook 去模板化与面试展示叙事修复
+
+本轮只修改 `notebooks/final/` 下 5 个 notebook 的 Markdown 展示内容，不修改 code cell、不重新运行 notebook、不清空 outputs、不重新训练模型、不重新选择 threshold，也不移动 outputs 或修改 `data/raw/`。
+
+### 修复内容
+
+- 去掉 final notebook 顶部“分析目标 / 输入与输出 / 方法概述 / 关键结论 / 结果解释 / 注意事项”的六段式前置模板。
+- 将说明内容拆到对应代码、表格和图表附近，形成“问题说明 → 代码 / 表格 / 图表 → 结果解释 → 项目决策影响”的自然分析顺序。
+- 保持中文展示风格，保留必要英文技术名词，例如 XGBoost、SHAP、PR-AUC、Recall、Precision@K、Lift、OOF。
+- 清理 final notebook 中的学习口吻、AI 协作痕迹和不确定表达。
+
+### 新的 notebook 展示主线
+
+- `01_data_understanding.ipynb`：数据规模与字段结构、标签分布与类别不平衡、FP/FN 成本设定。
+- `10_distribution_and_structural_signal_analysis.ipynb`：缺失率结构、零值率结构、数值偏态、pos/neg 差异和结构特征设计依据。
+- `14_structural_feature_test_evaluation.ipynb`：固定候选策略与阈值、official test 结果、baseline 对比和 final candidate 判断。
+- `20_sql_business_insights_and_visualization.ipynb`：Top-K 维修容量、风险等级工作量、成本策略、Decile/Lift 和阈值敏感性。
+- `21_model_interpretability.ipynb`：XGBoost gain、Permutation importance、SHAP-style contribution、特征家族贡献和 FN/FP/TP 样本解释。
+
+### 验证结果
+
+- code cell 和 outputs 的哈希在修改前后一致，确认没有改变计算逻辑和执行结果。
+- 未处理 archive notebooks，archive 仍保留 Day4 的统一归档说明。
+- 未修改 README 主结构、project report、outputs 目录或 final result。

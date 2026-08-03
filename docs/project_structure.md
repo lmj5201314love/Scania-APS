@@ -19,20 +19,18 @@
 
 ## notebooks/
 
-- `01_data_understanding.ipynb`：Day 1 数据理解和业务背景。
-- `02_missing_value_analysis.ipynb`：Day 2 基础数据质量、缺失值和标签分布分析。
-- `03_sql_analysis_support.ipynb`：Day 3 SQL 支撑说明和辅助表准备。
-- `04_model_baseline.ipynb`：Day 4 Dummy / Logistic baseline。
-- `05_model_improvement.ipynb`：Day 5 Random Forest / XGBoost 提升模型对比。
-- `06_threshold_cost_analysis.ipynb`：Day 6 基于已有预测概率的阈值成本敏感性分析。
-- `07_risk_level_and_business_summary.ipynb`：Day 7 风险分层、维修优先级和业务交付总结。
-- `08_validation_model_selection.ipynb`：validation-based model selection，在 valid 上选择模型和阈值，再在 official test 上评估。
-- `09_feature_ablation_experiments.ipynb`：缺失值与特征工程消融实验，对比缺失处理、缺失指示、原生缺失和基础特征筛选策略。
-- `10_distribution_and_structural_signal_analysis.ipynb`：Day 10 字段级分布诊断，分析缺失率、零值率、偏态、长尾、pos/neg 差异和 train/test 漂移。
-- `11_prefix_group_signal_analysis.ipynb`：Day 11 前缀组结构信号分析，把匿名字段前缀作为结构分组线索，为 Day 12 结构特征设计做准备。
-- `12_structural_feature_design.ipynb`：Day 12 结构特征方案设计，只整理特征家族、fit/transform 边界和 Day 13 实验矩阵，不训练模型。
+- `notebooks/final/`：最终展示主线 notebook，采用中文项目报告风格，适合 GitHub 浏览和项目讲解。
+  - `notebooks/final/01_data_understanding.ipynb`：Day 1 数据理解和业务背景。
+  - `notebooks/final/10_distribution_and_structural_signal_analysis.ipynb`：Day 10 字段级分布诊断，分析缺失率、零值率、pos/neg 差异和 train/test 漂移。
+  - `notebooks/final/14_structural_feature_test_evaluation.ipynb`：Day 14 final candidate official test 观察和最终候选判断。
+  - `notebooks/final/20_sql_business_insights_and_visualization.ipynb`：Day 20 SQL 业务洞察和最终图表展示。
+  - `notebooks/final/21_model_interpretability.ipynb`：Day 21 模型解释性、SHAP 和 feature family 贡献展示。
+- `notebooks/archive/`：历史实验 notebook，用于审计、复盘和保留实验脉络；已加入统一中文归档说明，但不作为最终展示入口。
+  - 包含 Day 2-9、Day 11-13、Day 15-19 的过程型 notebook。
+  - 部分 archive notebook 依赖本地保留但不再上传 GitHub 的预测明细、threshold grid、trial results 或 OOF 明细；依赖关系和再生成脚本见 `reports/notebook_reproducibility_audit.md`。
+- `notebooks/README.md`：说明 final/archive 分层、各 notebook 用途、依赖和再生成入口。
 
-Notebook 用于记录分析过程，不应堆放大量可复用函数；可复用逻辑应放入 `src/scania_aps/`。
+Notebook 用于记录分析过程和展示关键结论，不应堆放大量可复用函数；可复用逻辑应放入 `src/scania_aps/`。复现主入口是 `scripts/`。新增或修改 final notebook 时，Markdown 展示内容应使用中文，开头说明分析目标、输入输出、关键结论和边界。
 
 ## src/scania_aps/
 
@@ -156,6 +154,10 @@ Day 12 结构特征方案设计新增的主要输出包括：
 - `project_report.md`：完整项目报告。
 - `resume_bullets.md`：简历项目经历表达。
 - `interview_qa.md`：面试问答准备。
+- `sql_business_insights.md`：Day20 SQL 业务洞察专题报告。
+- `model_interpretability.md`：Day21 模型解释性专题报告。
+- `readme_presentation_audit.md`：README 展示结构审计。
+- `notebook_reproducibility_audit.md`：Final Packaging Day 3 notebook 依赖和再生成脚本审计。
 
 ## tests/
 
@@ -178,7 +180,7 @@ Day 13 新增文件和输出如下：
 - `src/scania_aps/features/structural_features.py`：结构特征 fit/transform 工具，只在 train_inner 上确定字段列表、前缀成员关系和 selected missing indicator 字段，再应用到 valid。
 - `src/scania_aps/models/structural_feature_experiments.py`：结构特征 valid-only 实验模块，使用 XGBoost 比较不同结构特征组的 valid 阈值结果。
 - `scripts/11_structural_feature_valid_experiments.py`：从项目根目录运行 Day 13 实验，只使用 train_inner / valid，不使用 official test。
-- `notebooks/13_structural_feature_valid_experiments.ipynb`：记录 Day 13 实验流程、实验组、valid 结果和 Day 14 建议。
+- `notebooks/archive/13_structural_feature_valid_experiments.ipynb`：记录 Day 13 实验流程、实验组、valid 结果和 Day 14 建议。
 - `tests/test_structural_features.py`：测试样本级缺失率、样本级零值率、前缀组零值率、selected missing indicators 和 transform 不修改原始 DataFrame。
 - `tests/test_structural_feature_experiments_schema.py`：测试结构特征实验结果表 schema。
 
@@ -198,7 +200,7 @@ Day 14 新增文件和输出如下：
 
 - `src/scania_aps/models/structural_feature_test_evaluation.py`：结构特征候选方案 official test 观察模块，固定使用 Day 13 valid 阈值，不在 test 上重新选择方案。
 - `scripts/12_structural_feature_test_evaluation.py`：从项目根目录运行 Day 14 official test 观察，输出 test 指标、预测明细、valid/test 对比和元数据。
-- `notebooks/14_structural_feature_test_evaluation.ipynb`：记录 Day 14 固定候选方案、official test 观察结果和泛化判断。
+- `notebooks/final/14_structural_feature_test_evaluation.ipynb`：记录 Day 14 固定候选方案、official test 观察结果和泛化判断。
 - `tests/test_structural_feature_test_evaluation_schema.py`：使用小型模拟数据测试 Day 14 输出 schema 和阈值来源。
 
 Day 14 新增本地输出：
@@ -217,7 +219,7 @@ Day 15 新增文件和输出如下：
 
 - `src/scania_aps/models/xgb_tuning.py`：受控 XGBoost 调参模块，支持参数随机采样、broad/refined 搜索空间构造、候选策略特征准备、trial 级阈值评估和 valid best summary 汇总。
 - `scripts/13_xgb_tuning_valid_experiments.py`：从项目根目录运行 Day15 two-stage randomized search。脚本只使用 `train_inner / valid`，不使用 official test。
-- `notebooks/15_xgb_tuning_valid_experiments.ipynb`：记录 Day15 调参目标、候选策略、broad/refined 思路和输出复盘方式。
+- `notebooks/archive/15_xgb_tuning_valid_experiments.ipynb`：记录 Day15 调参目标、候选策略、broad/refined 思路和输出复盘方式。
 - `tests/test_xgb_tuning_schema.py`：使用小型模拟数据测试参数采样、refined search space 构造、特征准备和 trial 结果 schema。
 
 Day15 新增本地输出：
@@ -242,7 +244,7 @@ Day16 新增文件和输出如下：
 
 - `src/scania_aps/models/xgb_tuning_test_evaluation.py`：读取 Day15 valid best summary 中的固定参数和 threshold，在 official test 上评估 tuned XGBoost candidates。
 - `scripts/14_xgb_tuning_test_evaluation.py`：从项目根目录运行 Day16 official test 观察；不重新调参、不重新选阈值。
-- `notebooks/16_xgb_tuning_test_evaluation.ipynb`：记录 Day16 目标、固定候选方案、official test 结果、valid/test 对比和后续建议。
+- `notebooks/archive/16_xgb_tuning_test_evaluation.ipynb`：记录 Day16 目标、固定候选方案、official test 结果、valid/test 对比和后续建议。
 - `tests/test_xgb_tuning_test_evaluation_schema.py`：使用小型模拟数据测试 Day16 输出 schema、阈值来源和参数读取逻辑。
 
 Day16 新增本地输出：
@@ -263,7 +265,7 @@ Day17 新增文件和输出如下：
 - `src/scania_aps/features/bin_projection.py`：匿名 histogram/bin-like 前缀组投影特征工具，支持 prefix/bin index 解析、bin group membership fit、行级 projection 特征 transform 和 metadata 输出。
 - `src/scania_aps/models/oof_threshold_experiments.py`：OOF / Repeated CV 阈值选择实验模块，支持 cost_min、Recall floor、FN floor 和 OOF 稳定性汇总。
 - `scripts/15_oof_recall_floor_bin_projection.py`：从项目根目录运行 Day17 实验，只使用 official train，不使用 official test。
-- `notebooks/17_oof_recall_floor_bin_projection.ipynb`：记录 Day17 实验边界、OOF 逻辑、Recall/FN floor、bin projection 和 Day18 候选建议。
+- `notebooks/archive/17_oof_recall_floor_bin_projection.ipynb`：记录 Day17 实验边界、OOF 逻辑、Recall/FN floor、bin projection 和 Day18 候选建议。
 - `tests/test_bin_projection.py`：bin projection 解析、排序、NaN/全零安全处理和不修改原始 DataFrame 的单元测试。
 - `tests/test_oof_threshold_experiments_schema.py`：OOF split 和带约束 threshold selection 的轻量 schema 测试。
 
@@ -291,7 +293,7 @@ Day18 新增文件和输出如下：
 
 - `src/scania_aps/models/oof_ensemble_experiments.py`：同折 OOF base prediction、FN/FP overlap、固定 recipe 概率 ensemble、threshold grid 和 Day19 候选筛选逻辑。
 - `scripts/16_oof_probability_ensemble.py`：从项目根目录运行 Day18 OOF ensemble 实验；只使用 official train，不使用 official test。
-- `notebooks/18_oof_probability_ensemble.ipynb`：记录 Day18 的实验边界、base strategy、overlap analysis、12 个 recipe、threshold rule 和候选筛选结论。
+- `notebooks/archive/18_oof_probability_ensemble.ipynb`：记录 Day18 的实验边界、base strategy、overlap analysis、12 个 recipe、threshold rule 和候选筛选结论。
 - `tests/test_oof_ensemble_experiments_schema.py`：用小型模拟数据测试 recipe 计算、rank average、threshold rule 和 diagnostic candidate 排除逻辑。
 
 Day18 新增本地输出：
@@ -346,7 +348,7 @@ Day 19 不继续追模型分数，转向 SQL 业务交付分析。核心目标�
 
 ### 可选 Notebook
 
-- `notebooks/19_sql_business_analysis.ipynb`：如需在无 MySQL 环境下快速预览 SQL 业务分析结果，可读取 `outputs/sql_exports/` CSV 进行本地展示。
+- `notebooks/archive/19_sql_business_analysis.ipynb`：如需在无 MySQL 环境下快速预览 SQL 业务分析结果，可读取 `outputs/sql_exports/` CSV 进行本地展示。
 
 Day 19 的 SQL 输出用于业务分析和面试讲述，不连接 MySQL、不导入 MySQL、不修改 `data/raw/`，也不改变 Day14 final candidate。
 
@@ -357,7 +359,7 @@ Day20 不继续建模，也不连接 MySQL。本轮只读取 Day19 `outputs/sql_
 Day20 新增文件如下：
 
 - `scripts/18_generate_business_insight_figures.py`：读取 Day19 SQL exports，生成 final tables、PNG 图表和 `reports/sql_business_insights.md`。脚本不重新训练模型、不重新选择 threshold、不修改 `data/raw/`。
-- `notebooks/20_sql_business_insights_and_visualization.ipynb`：展示 Day20 的 Top-K、风险工作量、成本策略、decile/lift/gain、阈值敏感性和错误分析结果。
+- `notebooks/final/20_sql_business_insights_and_visualization.ipynb`：展示 Day20 的 Top-K、风险工作量、成本策略、decile/lift/gain、阈值敏感性和错误分析结果。
 - `reports/sql_business_insights.md`：面向 README 和面试复述的 SQL business insights 报告。
 - `tests/test_business_insight_outputs.py`：使用小型模拟数据测试 Day20 汇总函数，不依赖真实 Scania 大文件、不连接 MySQL。
 
@@ -377,10 +379,62 @@ Day21 新增文件如下：
 - `src/scania_aps/interpretability/__init__.py`：解释性分析包入口。
 - `src/scania_aps/interpretability/model_interpretability.py`：复现 Day14 final candidate、计算 XGBoost importance、permutation importance、SHAP importance、feature family summary 和 case explanation tables。
 - `scripts/19_model_interpretability.py`：运行 Day21 解释性分析，生成 final tables、final figures 和报告。
-- `notebooks/21_model_interpretability.ipynb`：展示 Day21 解释性输出，不调参、不改 threshold。
+- `notebooks/final/21_model_interpretability.ipynb`：展示 Day21 解释性输出，不调参、不改 threshold。
 - `reports/model_interpretability.md`：模型解释性报告。
 - `reports/readme_presentation_audit.md`：README 展示审计报告，供 Day22 最终 README 改版使用。
 - `tests/test_model_interpretability_schema.py`：使用小型模拟数据测试解释性输出 schema，不依赖真实 Scania 大文件。
+
+## Final Packaging Day 2 outputs 清理规则
+
+Final Packaging Day 2 不做建模、不重新生成输出，只整理 GitHub 展示资产与 Git tracking。
+
+### GitHub 展示资产
+
+- `outputs/figures/final/`：README 和报告使用的最终图表，继续上传。
+- `outputs/tables/final/`：最终业务洞察、阈值敏感性和解释性汇总表，继续上传。
+- `outputs/sql_exports/`：SQL 业务分析导出 CSV，继续上传。
+- `outputs/metrics/day14_structural_feature_test_results.csv`：当前最终候选 Day14 official test 指标，继续上传。
+- `outputs/README_outputs.md`：输出说明文档，继续上传。
+
+### 本地保留的过程产物
+
+- `outputs/predictions/*.csv`：样本级预测明细、OOF raw / averaged predictions 和历史预测文件，体积较大，取消 Git tracking。
+- `outputs/metrics/*threshold_metrics.csv`：阈值网格明细，取消 Git tracking。
+- `outputs/metrics/*trial_results.csv`：调参 trial 明细，取消 Git tracking。
+- `outputs/tables/day7_maintenance_priority_list.csv`：早期大型维修优先级明细，取消 Git tracking。
+- `outputs/archive/`：本地归档目录，默认不上传 GitHub。
+
+这些过程产物没有被删除，只是不再作为 GitHub 展示资产上传。README 当前引用的 final figures、final tables、SQL exports 和 Day14 final metrics 不移动、不改名。
+
+## Final Packaging Day 3 notebook 分层与复现说明
+
+Final Packaging Day 3 不建模、不移动 outputs、不删除 notebook，只把 notebook 从根目录整理到 `final/` 和 `archive/` 两个层级，并补充复现依赖说明。
+
+### GitHub 展示 notebook
+
+- `notebooks/final/01_data_understanding.ipynb`
+- `notebooks/final/10_distribution_and_structural_signal_analysis.ipynb`
+- `notebooks/final/14_structural_feature_test_evaluation.ipynb`
+- `notebooks/final/20_sql_business_insights_and_visualization.ipynb`
+- `notebooks/final/21_model_interpretability.ipynb`
+
+### 历史实验 notebook
+
+- `notebooks/archive/`：保留 Day2-Day9、Day11-Day13、Day15-Day19 的过程型 notebook。
+- `notebooks/README.md`：记录 final/archive 分层、每个 notebook 的作用、主要依赖和再生成入口。
+- `reports/notebook_reproducibility_audit.md`：记录 archive notebook 对本地过程 outputs 的依赖，以及对应脚本入口。
+
+本阶段确认：README 使用的 final figures、`outputs/tables/final/`、`outputs/sql_exports/`、Day14 final metrics 和 `data/raw/` 均未移动或修改。复现主入口仍是 `scripts/`，而不是在 notebook 中维护复杂生产逻辑。
+
+## Final Packaging Day 4 notebook 展示精修规则
+
+Final Packaging Day 4 不修改代码计算逻辑、不重新训练模型、不移动 outputs，只精修 notebook 的 Markdown 展示层。
+
+- `notebooks/final/`：5 个 final notebook 已统一改成中文项目报告风格，开头包含分析目标、输入与输出、方法概述、关键结论、结果解释和注意事项。
+- `notebooks/archive/`：16 个 archive notebook 已加入统一中文归档说明，保留历史实验过程，不全文重写。
+- archive notebook 可能依赖本地未上传的过程产物，例如 `outputs/predictions/`、threshold metrics、trial results 或 OOF 明细；复现说明见 `reports/notebook_reproducibility_audit.md`。
+- notebook 不是主复现入口，`scripts/` 才是主复现入口。
+- final notebook 中不得把匿名字段解释成真实传感器或物理部件含义，不写学习口吻、AI 协作痕迹或不确定表达。
 
 Day21 新增 final tables：
 

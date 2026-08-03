@@ -24,6 +24,7 @@ config/config_local.yaml
 config/*_local.*
 *.local.yaml
 
+# raw and intermediate data
 # 原始数据和中间数据文件
 # 只保留目录占位文件，不把大型 CSV 数据提交到 Git。
 data/raw/*
@@ -33,6 +34,7 @@ data/processed/*
 !data/interim/.gitkeep
 !data/processed/.gitkeep
 
+# model artifacts
 # 训练产物和模型文件
 models/*
 !models/.gitkeep
@@ -45,12 +47,20 @@ models/*
 *.pb
 *.savedmodel/
 
-# 输出产物
-# outputs/figures/*
-# outputs/metrics/*
-# outputs/predictions/*
-# outputs/tables/*
-outputs/predictions/day18_oof_ensemble_predictions.csv
+# large experimental outputs
+# 大型过程产物：本地保留，可由脚本再生成，不继续上传 GitHub。
+outputs/predictions/*.csv
+outputs/metrics/*threshold_metrics.csv
+outputs/metrics/*trial_results.csv
+outputs/tables/day7_maintenance_priority_list.csv
+outputs/archive/
+
+# keep final presentation assets
+# 最终展示资产：README、报告和 SQL 分析需要继续上传。
+!outputs/README_outputs.md
+!outputs/figures/final/*.png
+!outputs/tables/final/*.csv
+!outputs/sql_exports/*.csv
 !outputs/figures/.gitkeep
 !outputs/metrics/.gitkeep
 !outputs/predictions/.gitkeep

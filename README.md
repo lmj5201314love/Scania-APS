@@ -1,139 +1,155 @@
 # Scania APS 预测性维护项目
 
-本项目基于 Scania APS 重卡空气压力系统故障数据集，构建一个面向制造业/工业数据分析场景的预测性维护分析流程。
+## 1. 项目概览
 
-项目重点不是单纯追求分类分数，而是围绕真实工业数据问题展开：高维匿名特征、结构性缺失、极度类别不平衡，以及误报和漏报成本不对称。最终输出不仅包括模型结果，还包括阈值成本分析、风险分层和维修优先级建议。
+本项目基于 Scania APS 故障数据集，构建一个面向工业预测性维护场景的成本敏感建模流程。任务目标是从高维匿名传感器特征和结构性缺失数据中识别 APS 相关故障。
 
-## 业务背景
+项目围绕成本敏感预测性维护展开，覆盖维修优先级排序、SQL 业务分析和模型解释性三个交付方向。
 
-APS，即 Air Pressure System，空气压力系统，是重卡运行中的关键系统之一。APS 相关故障如果被漏报，可能导致车辆 breakdown、停机和更高维修成本；误报则主要带来额外检查和维修资源占用。
+## 2. 业务问题与成本设定
 
-数据集给定的业务成本设定为：
+APS 故障漏检的业务代价远高于误检。FN 表示真实 APS 故障没有被模型识别，可能带来停机、故障扩大和更高维修成本；FP 主要带来额外检查工作量。
 
-- False Positive，误报成本：`10`
-- False Negative，漏报成本：`500`
-
-因此本项目不以 accuracy 作为核心指标，而重点关注：
-
-- precision
-- recall
-- F1 / F2
-- PR-AUC
-- total cost
-
-代码中的成本参数统一从 `config/config.yaml` 读取，避免在 Python 评估逻辑中写死业务参数。
-
-## 核心结果
-
-当前测试集回溯分析中的候选方案为：
+本项目使用数据集给定的业务成本：
 
 ```text
-XGBoost + median_all + threshold 0.20
+total_cost = 10 * FP + 500 * FN
 ```
 
-该方案不是生产环境最终阈值。更严谨的生产流程应使用验证集选择阈值，再在测试集上做最终评估。
+| 错误类型 | 含义 | 成本 |
+|---|---|---:|
+| FP | 不必要的检查 | 10 |
+| FN | 漏检故障 / 故障停机风险 | 500 |
 
-| 方案 | 阈值 | Precision | Recall | F2 | FP | FN | Total Cost |
-|---|---:|---:|---:|---:|---:|---:|---:|
-| Naive baseline，全预测 neg | - | 0.0000 | 0.0000 | 0.0000 | 0 | 375 | 187500 |
-| Logistic + drop_high_missing_median | 0.50 | 0.4860 | 0.9280 | 0.7852 | 368 | 27 | 17180 |
-| XGBoost + median_all 默认阈值 | 0.50 | 0.6357 | 0.9120 | 0.8391 | 196 | 33 | 18460 |
-| XGBoost + median_all 低成本阈值 | 0.20 | 0.4692 | 0.9760 | 0.8026 | 414 | 9 | 8640 |
+由于数据类别极不平衡，准确率不适合作为核心指标。本项目重点关注 recall、F2、PR-AUC、FN 和 total_cost。
 
-相对 naive baseline，当前候选方案将 total cost 从 `187500` 降到 `8640`：
+## 3. 最终结果
 
-```text
-cost_reduction = 178860
-cost_reduction_rate = 95.39%
-```
+最终候选方案：
 
-## 风险分层和维修建议
+- 策略：`median_all_structural_all`
+- 模型：带 `scale_pos_weight` 的 XGBoost
+- 阈值：`0.18`
+- 官方测试集结果：`TN=15227`，`FP=398`，`TP=363`，`FN=12`
+- 总业务成本：`9980`
 
-基于 XGBoost + `median_all` 的预测概率和 Day 6 回溯分析阈值 `0.20`，项目将测试集样本划分为四类风险等级：
+| 模型 / 策略 | 数据集 | 阈值 | TP | FP | TN | FN | 总成本 |
+|---|---|---:|---:|---:|---:|---:|---:|
+| naive_all_negative | official_test | - | 0 | 0 | 15625 | 375 | 187500 |
+| day14_baseline_median_all | official_test | 0.16 | 362 | 432 | 15193 | 13 | 10820 |
+| day14_structural_all_final_candidate | official_test | 0.18 | 363 | 398 | 15227 | 12 | 9980 |
+| day16_tuned_best | official_test | 0.19 | 360 | 376 | 15249 | 15 | 11260 |
 
-| Risk Level | 车辆数 | 实际 APS 故障数 | TP | FP | FN | TN | 建议动作 |
-|---|---:|---:|---:|---:|---:|---:|---|
-| Critical | 411 | 324 | 324 | 87 | 0 | 0 | 立即检修 |
-| High | 369 | 42 | 42 | 327 | 0 | 0 | 优先检修 |
-| Medium | 415 | 6 | 0 | 0 | 6 | 409 | 观察复查 |
-| Low | 14805 | 3 | 0 | 0 | 3 | 14802 | 暂不处理 |
+最终候选方案将官方测试集成本从全预测负类基线的 `187500` 降到 `9980`，下降 `177520`，下降率约 `94.68%`。Day18 OOF 集成结果作为训练集内部稳健性检查单独记录。
 
-风险分层的目的，是把模型概率转化为维修资源排序：高风险车辆优先进入检查队列，中等风险车辆复查观察，低风险车辆暂缓处理。
+![成本策略对比](outputs/figures/final/final_cost_policy_comparison.png)
 
-## Key Findings
+## 4. 关键实验与决策
 
-1. 默认 `0.5` 阈值不适合 APS 成本场景。FN 成本远高于 FP，适当降低阈值可以显著减少漏报并降低 total cost。
-2. XGBoost 的概率排序能力需要通过业务阈值转化为维修决策，而不是直接使用默认分类阈值。
-3. 高缺失字段不能只按缺失率机械删除，需要结合模型表现和业务成本验证。
-4. accuracy 不适合作为核心指标。类别极不平衡场景下，全预测多数类也可能看起来准确，但业务上会漏掉关键故障样本。
+项目从基础模型、缺失值处理、结构特征、调参、OOF 稳健性检查逐步推进，最终收敛到 Day14 的结构特征方案。
 
-## 严谨性增强：Validation-based 阈值选择
+| Stage | Strategy / Experiment | Result | Decision |
+|---|---|---|---|
+| Baseline models | Logistic Regression / Random Forest / XGBoost | XGBoost 在成本和 PR-AUC 上更适合作为主线模型 | 保留 XGBoost |
+| Missing-value strategies | `median_all`、drop high missing、missing indicator、XGBoost native missing | missing indicator 有预测信号，但 FP 偏高 | 保留为对照信号 |
+| Structural features | sample-level missing/zero、prefix zero/missing、selected missing indicators、`structural_all` | `structural_all` 在官方测试集达到 cost `9980` | 最终候选 |
+| XGBoost tuning | Day15 在 valid 上改善 | Day16 官方测试集 best tuned cost 为 `11260` | 未进入最终方案 |
+| OOF / bin projection | OOF 用于检查单一 valid split 的阈值稳定性，bin projection 只有轻微信号 | 对最终主线贡献有限 | 作为稳健性检查 |
+| OOF ensemble | 多策略概率平均 | OOF cost 略有改善，但 FN 增加 | 未进入官方测试集 |
+| SQL business analysis | Top-K、risk level、lift、threshold sensitivity | 将模型概率转化为维修容量和优先级视图 | 作为业务交付 |
 
-原 Day 6 的阈值成本分析是在官方 test 预测概率上做回溯敏感性分析，适合解释“不同阈值会怎样影响成本”，但不适合作为严格的模型选择流程。
+Day6 的 `8640` 用于展示阈值敏感性；最终报告结果采用 Day14 `median_all_structural_all`，阈值固定为 `0.18`。
 
-本轮增强从官方 training set 内部划分：
+## 5. 评估指标
 
-- `train_inner`：48,000 行，正类 800，负类 47,200。
-- `valid`：12,000 行，正类 200，负类 11,800。
-- `official test`：16,000 行，只用于最终评估。
+官方测试集中负类样本远多于正类 APS 故障样本，准确率无法充分反映漏检故障的业务风险。项目使用以下指标连接模型表现和维修决策：
 
-validation 流程只在 `valid` 上选择模型、缺失处理策略和阈值，official test 不参与选择。
+| Metric | Role in This Project |
+|---|---|
+| Recall | 衡量捕获了多少真实 APS 故障 |
+| F2-score | 比 F1 更强调 recall，适合漏检成本更高的场景 |
+| PR-AUC | 比 accuracy 更适合稀有正类场景下的概率排序评估 |
+| Total Cost | 直接反映 FP / FN 的业务惩罚 |
+| Precision@K | 衡量有限检修容量下高风险队列的命中质量 |
+| Lift | 衡量真实故障是否集中在高风险分位 |
 
-| 选择方式 | 模型 | 缺失策略 | 阈值 | Precision | Recall | F2 | FP | FN | Total Cost |
-|---|---|---|---:|---:|---:|---:|---:|---:|---:|
-| valid 选择后 test 评估 | XGBoost | drop_high_missing_median | 0.14 | 0.4370 | 0.9707 | 0.7801 | 469 | 11 | 10190 |
-| Day 6 test 回溯最优 | XGBoost | median_all | 0.20 | 0.4692 | 0.9760 | 0.8026 | 414 | 9 | 8640 |
-| 差异 | - | - | - | -0.0323 | -0.0053 | -0.0225 | +55 | +2 | +1550 |
+## 6. 方法流程
 
-结果说明：valid-based 流程下 official test 成本从 Day 6 回溯最优的 `8640` 上升到 `10190`，说明原 test 回溯阈值存在一定乐观偏差；但 XGBoost 仍然保持高 recall 和较低 total cost，策略整体没有失效。
+项目采用简洁的分析 pipeline：
 
-## 缺失值与特征工程消融实验
+1. 数据理解与缺失值诊断。
+2. 基线建模。
+3. 成本敏感阈值分析。
+4. 基于验证集的模型选择。
+5. 结构特征实验。
+6. 固定验证阶段选出的策略和阈值，在官方测试集上做最终观察。
+7. SQL 业务分析。
+8. 模型解释性分析。
 
-在 validation-based 流程基础上，项目进一步比较了缺失值处理和基础特征工程策略。所有策略和阈值仍然只在 valid 上选择，official test 只用于最终评估。
+完整开发过程记录保存在 `reports/summary.md`，README 只展示最终项目主线。
 
-| 策略 | 模型 | valid best threshold | official test total cost | Recall | F2 | FP | FN | 结论 |
-|---|---|---:|---:|---:|---:|---:|---:|---|
-| drop_50_missing_median | XGBoost | 0.14 | 10820 | 0.9680 | 0.7740 | 482 | 12 | valid 成本最低，但 test 不如 drop_80 稳定 |
-| drop_80_missing_median | XGBoost | 0.14 | 10190 | 0.9707 | 0.7801 | 469 | 11 | 删除极高缺失字段较稳，是 validation 基准方案 |
-| median_all | XGBoost | 0.16 | 10820 | 0.9653 | 0.7890 | 432 | 13 | 保留全部字段表现稳定，但成本不最低 |
-| median_with_indicator | XGBoost | 0.10 | 10060 | 0.9760 | 0.7556 | 556 | 9 | test 观察成本最低，说明缺失指示有信息 |
-| xgb_native_missing | XGBoost | 0.18 | 11180 | 0.9600 | 0.8079 | 368 | 15 | F2 和 precision 较好，但 FN 增加导致成本不占优 |
-| missing_indicator_only | XGBoost | 0.78 | 27570 | 0.8987 | 0.6255 | 857 | 38 | 缺失模式有信号，但不能单独替代原始数值 |
-| low_variance_filter | XGBoost | 0.12 | 10510 | 0.9707 | 0.7696 | 501 | 11 | 轻量可保留，但不是最优 |
-| high_correlation_filter | XGBoost | 0.13 | 12410 | 0.9600 | 0.7656 | 491 | 15 | 当前不建议作为主线 |
-| l1_feature_selection | Logistic | 0.35 | 16780 | 0.9360 | 0.7535 | 478 | 24 | 可作线性模型解释辅助，但不是最优 |
+## 7. 业务洞察
 
-关键发现：
+模型输出被进一步转化为维修计划视图，用于回答“有限维修资源应该优先检查哪些样本”。
 
-- `missing_indicator_only` 的 AP 明显高于正类基准率，说明缺失模式本身确实携带预测信号。
-- `median_with_indicator` 在 official test 观察中成本最低，但这不能作为 test 反选策略的依据，只能说明该方向值得后续验证。
-- `drop_50_missing_median` 在 valid 上最好，但 test 上不如 `drop_80_missing_median` 稳定，说明高缺失字段不能只凭缺失率机械删除。
-- `xgb_native_missing` 没有在 total cost 上胜出，但 F2 较高，后续可在轻量调参中保留观察。
+![Top-K 维修容量](outputs/figures/final/final_topk_maintenance_capacity.png)
 
-## 项目阶段
+Top-K 分析把概率排序转化为维修容量视图：前 500 个高风险匿名样本覆盖 340 / 375 个真实 APS 故障。
 
-- Day 1：项目初始化与业务理解。
-- Day 2：基础数据质量与缺失值分析。
-- Day 3：SQL 数据质量分析支持。
-- Day 4：Dummy / Logistic baseline。
-- Day 5：Random Forest / XGBoost 提升模型对比。
-- Day 6：阈值成本敏感性分析。
-- Day 7：风险分层、维修优先级建议和项目交付整理。
-- Cleanup：项目结构清理、空文件处理、SQL 成本说明和结构文档补充。
-- Enhancement 1：Validation-based model selection，在 valid 上选择模型和阈值，再在 official test 上评估。
-- Enhancement 2：Missing value & feature engineering ablation study，系统比较缺失值处理和基础特征工程策略。
-- Day 10/11：完成字段级分布诊断和前缀组结构信号分析。
-- Day 12：进入结构特征方案设计，当前只输出设计表和实验计划，不训练模型、不报告效果提升。
+![风险等级工作量](outputs/figures/final/final_risk_level_workload.png)
 
-## 技术栈
+风险等级视图展示了维修工作量分布：Critical 层级真实正类率为 78.22%，适合作为最高优先级检查队列。
 
-- Python：pandas、numpy、scikit-learn、xgboost
-- 可视化：matplotlib、seaborn
-- SQL：MySQL 分析脚本
-- 配置：PyYAML、python-dotenv
-- 项目结构：`src/` 模块化代码、`scripts/` 可执行脚本、`notebooks/` 分析过程、`reports/` 交付文档
+![分位提升分析](outputs/figures/final/final_decile_lift_gain.png)
 
-## 如何运行
+Decile / lift 分析显示最高风险分位显著富集真实故障，最高风险 decile 的 lift 为 `9.95`。
+
+更完整的 SQL 业务结论见 `reports/sql_business_insights.md`。
+
+## 8. 阈值敏感性
+
+![阈值敏感性](outputs/figures/final/final_threshold_sensitivity.png)
+
+敏感性分析展示了漏检故障和检查工作量之间的权衡。最终报告阈值保持为 Day14 验证阶段确定的 `0.18`。
+
+阈值敏感性表显示，更低的诊断阈值，例如 `0.07`，可以把 FN 从 `12` 降到 `6`，同时会把预测正类工作量从 `761` 个样本增加到 `1016` 个样本。
+
+## 9. 模型解释性
+
+![SHAP 重要特征](outputs/figures/final/final_shap_bar_top20.png)
+
+SHAP 风格贡献图展示了模型评分中影响最大的匿名字段，主要贡献来自原始数值特征。
+
+![特征家族重要性](outputs/figures/final/final_feature_family_importance.png)
+
+特征家族汇总显示，结构特征提供补充信号，但模型主体仍由原始匿名数值字段驱动。
+
+解释性结论：
+
+- XGBoost 增益和 SHAP 风格贡献显示，模型主要依赖匿名原始数值字段。
+- 在 XGBoost 增益前列特征中，`prefix_cn_zero_rate` 和 `missing_br_000` 说明结构性缺失 / 零值信号被模型利用，但不是主导信息源。
+- 按特征家族汇总，`raw_feature` 贡献约 `92.92%` 的 XGBoost 增益，以及约 `96.07%` 的平均绝对 SHAP 贡献。
+- 特征重要性和 SHAP 解释的是模型评分贡献，不提供匿名字段的真实传感器或物理部件含义。
+
+详细解释性分析见 `reports/model_interpretability.md`。
+
+## 10. SQL 分析
+
+Day19 将最终候选方案的预测结果和策略对比表导出为可用于 SQL 分析的 CSV。MySQL 导入是可选步骤，README 只展示核心分析价值。
+
+核心 SQL 文件：
+
+- `sql/08_topk_maintenance_capacity_analysis.sql`
+- `sql/09_risk_workload_analysis.sql`
+- `sql/10_prediction_error_analysis.sql`
+- `sql/11_business_cost_policy_comparison.sql`
+- `sql/12_model_monitoring_template.sql`
+- `sql/13_decile_lift_gain_analysis.sql`
+- `sql/14_threshold_sensitivity_analysis.sql`
+
+这些 SQL 覆盖维修容量、风险等级工作量、预测错误分析、成本策略对比、监控模板、decile lift/gain 和阈值敏感性。MySQL Workbench 导入说明见 `docs/mysql_import_guide.md`。
+
+## 11. 如何复现
 
 安装依赖：
 
@@ -141,126 +157,72 @@ validation 流程只在 `valid` 上选择模型、缺失处理策略和阈值，
 pip install -r requirements.txt
 ```
 
-运行 baseline：
-
-```powershell
-python scripts/02_train_baseline.py
-```
-
-运行提升模型：
-
-```powershell
-python scripts/03_train_advanced_models.py
-```
-
-运行阈值成本分析：
-
-```powershell
-python scripts/04_evaluate_thresholds.py
-```
-
-生成风险分层和维修优先级表：
-
-```powershell
-python scripts/05_build_risk_tables.py
-```
-
-运行 validation-based model selection：
-
-```powershell
-python scripts/06_validation_model_selection.py
-```
-
-运行缺失值与特征工程消融实验：
-
-```powershell
-python scripts/07_feature_ablation_experiments.py
-```
-
-主要输出：
-
-- `outputs/metrics/day6_best_threshold_summary.csv`
-- `outputs/metrics/final_test_evaluation_from_valid_selection.csv`
-- `outputs/metrics/validation_vs_day6_backtest_compare.csv`
-- `outputs/metrics/feature_ablation_valid_best_summary.csv`
-- `outputs/metrics/feature_ablation_final_test_results.csv`
-- `outputs/tables/feature_ablation_strategy_metadata.csv`
-- `outputs/tables/missing_indicator_signal_summary.csv`
-- `outputs/tables/day7_maintenance_priority_list.csv`
-- `outputs/tables/day7_risk_level_summary.csv`
-- `outputs/tables/day7_business_result_summary.csv`
-
-## 项目结构
-
-完整目录说明见：
+将 Scania APS 原始 CSV 放入：
 
 ```text
-docs/project_structure.md
+data/raw/
 ```
 
-## 项目局限
+原始文件名由 `config/config.yaml` 配置：
 
-1. 数据集较老，不能代表当前车辆传感器系统的最新状态。
-2. 特征已经匿名化，无法解释具体传感器或部件的物理含义。
-3. 数据没有时间戳，无法构建真实时序预测或提前预警窗口。
-4. 当前低成本阈值来自测试集回溯敏感性分析，不是生产环境最终阈值。
-5. 缺少真实车辆 ID、维修记录和生产环境验证，无法直接评估上线效果。
+```text
+data/raw/aps_failure_training_set.csv
+data/raw/aps_failure_test_set.csv
+```
 
-## 后续增强方向
+运行最终候选方案的官方测试集评估：
 
-1. 基于 validation 流程做轻量级 XGBoost 调参，但避免把项目变成纯调参项目。
-2. 深化 SQL 业务分析，例如 Top-K 检修容量、不同风险等级实际故障率和维修工作量评估。
-3. 补充模型解释，例如特征重要性和 SHAP，但不虚构匿名特征的物理含义。
+```powershell
+python scripts/12_structural_feature_test_evaluation.py
+```
 
-## 简历表达建议
+生成 SQL 业务分析导出：
 
-> Scania APS 预测性维护项目：基于 60,000 条训练样本和 16,000 条测试样本，处理高维匿名工业特征、结构性缺失和极度类别不平衡问题；
-> 构建 Logistic / Random Forest / XGBoost 模型，并基于 FP=10、FN=500 的业务成本进行阈值优化；
-> 将测试集回溯 total cost 从 naive baseline 的 187,500 降至 8,640，同时输出风险分层和维修优先级建议。
+```powershell
+python scripts/17_prepare_sql_business_tables.py
+```
 
-## 历史增强阶段：Controlled XGBoost Tuning
+生成最终业务图表和洞察表：
 
-项目已完成 Day10/11 字段级与前缀组结构信号诊断、Day12 结构特征设计、Day13 结构特征 valid-only 实验和 Day14 official test 最终观察。当前进入 Day15：Controlled XGBoost Tuning。
+```powershell
+python scripts/18_generate_business_insight_figures.py
+```
 
-Day15 只使用 official train 内部划分的 `train_inner / valid`，不使用 official test 做参数、特征方案或阈值选择。本轮采用 two-stage randomized search，而不是全组合 GridSearch；valid 最优结果只用于筛选 Day16 official test 观察候选，不能写成最终模型。
+生成模型解释性表格和图表：
 
-## 历史增强阶段：Day17 OOF Threshold Selection
+```powershell
+python scripts/19_model_interpretability.py
+```
 
-Day16 显示单一 validation split 上调出的 XGBoost 参数和阈值没有稳定泛化到 official test。项目当前进入 Day17：引入 OOF / Repeated CV 阈值选择与 Recall/FN floor，用于缓解单一 validation split 阈值不稳定问题，并验证匿名 histogram/bin-like 前缀组投影特征是否提供额外结构信号。Day17 不使用 official test，不重新做 GridSearch，不做 SHAP / PCA / SVM / LightGBM / CatBoost。
+说明：
 
-## 历史增强阶段：Day18 OOF Probability Ensemble
+- 原始数据文件不提交到 Git。
+- 模型产物不提交，最终模型由脚本复现。
+- MySQL 导入是可选步骤，单独记录在文档中。
+- 复现主入口是 `scripts/`；notebook 主要用于分析展示，`notebooks/archive/` 中的历史 notebook 可能依赖本地再生成的过程型 outputs。
 
-Day18 在 OOF 框架下评估多策略概率平均，用于判断 `structural_all` 与 recall 型方案（selected missing indicators、prefix zero rate）是否存在可泛化互补。本轮不使用 official test、不做权重搜索、不使用 Day15 tuned models；OOF 结果仅用于决定是否存在值得进入后续 official test 观察的少数候选。
+## 12. 项目结构
 
-## 当前阶段：Model Interpretability and Presentation Audit
+```text
+config/                         项目配置和结构特征配置
+src/scania_aps/                 可复用 Python 模块
+scripts/                        可执行分析和报告生成流程
+sql/                            维修决策分析 SQL
+notebooks/final/                最终分析主线 notebook，适合浏览
+notebooks/archive/              历史实验 notebook，用于审计和复盘
+reports/                        项目报告、业务洞察、解释性分析
+outputs/figures/final/          README / report 使用的最终图表
+outputs/tables/final/           最终汇总表
+outputs/sql_exports/            SQL 分析用 CSV
+docs/                           数据字典、导入说明、项目结构说明
+tests/                          轻量级 schema 和工具函数测试
+```
 
-项目已完成 Day20：SQL business insights and visualization。本轮进入 Day21：model interpretability, SHAP analysis and presentation audit。Day21 只为了复现 Day14 final candidate 重新 fit 同配置模型用于解释性分析，不调参、不重新选择 threshold、不根据解释结果改模型，也不修改 `data/raw/`。
+更详细的目录说明见 `docs/project_structure.md`。
 
-当前最终候选仍是 Day14 `structural_all / median_all_structural_all`：
+## 13. 项目适用范围
 
-- official test threshold = `0.18`
-- FP = `398`
-- FN = `12`
-- total_cost = `9980`
-
-边界说明：Day6 的 `8640` 是 test 回溯观察，不作为最终严谨主结果；Day16 tuned 方案没有在 official test 上稳定泛化；Day18 ensemble 未满足进入 official test 的 OOF 筛选条件。
-
-补充报告：
-
-- `reports/sql_business_insights.md`
-- `reports/model_interpretability.md`
-- `reports/readme_presentation_audit.md`
-
-## Business Insights Preview
-
-详细结果见 `reports/sql_business_insights.md`。以下图表均由 Day19 CSV 实际计算生成，适合 README 和面试复述使用。
-
-![Cost policy comparison](outputs/figures/final/final_cost_policy_comparison.png)
-
-![Top-K maintenance capacity](outputs/figures/final/final_topk_maintenance_capacity.png)
-
-![Risk level workload](outputs/figures/final/final_risk_level_workload.png)
-
-![Decile lift gain](outputs/figures/final/final_decile_lift_gain.png)
-
-![Threshold sensitivity](outputs/figures/final/final_threshold_sensitivity.png)
+- 数据集是公开且较早的数据，更适合作为离线建模和业务分析案例。
+- 特征已经匿名化，模型解释只能停留在评分贡献层面。
+- 数据中没有真实车辆 ID 或维修历史记录；`sample_id` 只表示匿名样本编号。
+- 阈值选择依赖业务策略和维修工作量容忍度，实际落地需要结合现场运维资源重新校准。
