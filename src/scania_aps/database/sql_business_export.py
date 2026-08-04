@@ -14,19 +14,15 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from scania_aps.config import ReleasePolicy
+from scania_aps.evaluation.risk_utils import (
+    assign_risk_level,
+    assign_suggested_action,
+    classify_prediction_type,
+)
 
-FINAL_MODEL_VERSION = "day14_structural_all_final_candidate"
-FINAL_STRATEGY = "median_all_structural_all"
-FINAL_THRESHOLD = 0.18
 OFFICIAL_TEST_DATASET = "official_test"
 OOF_DATASET = "oof_train"
-
-RISK_ACTION_MAPPING = {
-    "Critical": "immediate_inspection",
-    "High": "priority_inspection",
-    "Medium": "monitor_and_recheck",
-    "Low": "no_action_now",
-}
 
 PROBABILITY_BINS = [0.0, 0.05, 0.10, 0.20, 0.40, 0.60, 0.80, 1.000000001]
 PROBABILITY_LABELS = [
@@ -59,8 +55,7 @@ def _first_existing_column(df: pd.DataFrame, candidates: list[str]) -> str:
 
 def _select_final_candidate_predictions(
     predictions: pd.DataFrame,
-    final_strategy: str = FINAL_STRATEGY,
-    final_threshold: float = FINAL_THRESHOLD,
+    release_policy: ReleasePolicy,
 ) -> pd.DataFrame:
     """从 Day14 predictions 中筛选最终候选方案。"""
 
@@ -70,65 +65,23 @@ def _select_final_candidate_predictions(
     )
     threshold_col = _first_existing_column(predictions, ["threshold"])
 
-    strategy_mask = predictions[strategy_col].astype(str).str.contains(
-        final_strategy,
-        case=False,
-        regex=False,
-    )
+    strategy_mask = predictions[strategy_col].astype(str).eq(release_policy.strategy)
     threshold_mask = np.isclose(
         predictions[threshold_col].astype(float),
-        final_threshold,
-        atol=1e-9,
+        release_policy.decision_threshold,
+        rtol=0.0,
+        atol=1e-12,
     )
     selected = predictions[strategy_mask & threshold_mask].copy()
 
     if selected.empty:
-        fallback_mask = predictions[strategy_col].astype(str).str.contains(
-            "structural_all",
-            case=False,
-            regex=False,
+        raise ValueError(
+            "未能在 Day14 predictions 中找到与 release policy 精确匹配的候选："
+            f"strategy={release_policy.strategy}, "
+            f"threshold={release_policy.decision_threshold}。"
         )
-        selected = predictions[fallback_mask].copy()
-
-    if selected.empty:
-        raise ValueError("未能在 Day14 predictions 中找到 structural_all 最终候选方案。")
 
     return selected.reset_index(drop=True)
-
-
-def assign_sql_export_risk_level(y_proba: pd.Series) -> pd.Series:
-    """按 Day19 SQL 导出口径生成风险等级。"""
-
-    proba = pd.Series(y_proba, dtype="float64")
-    levels = np.select(
-        [
-            proba >= 0.80,
-            (proba >= 0.20) & (proba < 0.80),
-            (proba >= 0.05) & (proba < 0.20),
-            proba < 0.05,
-        ],
-        ["Critical", "High", "Medium", "Low"],
-        default="Unknown",
-    )
-    return pd.Series(levels, index=proba.index)
-
-
-def classify_confusion_type(y_true: pd.Series, y_pred: pd.Series) -> pd.Series:
-    """生成 TP / FP / TN / FN。"""
-
-    true = pd.Series(y_true).astype(int)
-    pred = pd.Series(y_pred).astype(int)
-    labels = np.select(
-        [
-            (true == 1) & (pred == 1),
-            (true == 0) & (pred == 1),
-            (true == 0) & (pred == 0),
-            (true == 1) & (pred == 0),
-        ],
-        ["TP", "FP", "TN", "FN"],
-        default="Unknown",
-    )
-    return pd.Series(labels, index=true.index)
 
 
 def calculate_sample_cost(
@@ -149,7 +102,7 @@ def calculate_sample_cost(
 
 
 def assign_probability_band(y_proba: pd.Series) -> pd.Series:
-    """生成固定概率区间标签，便于 SQL 错误分析。"""
+    """按历史兼容字段 y_proba 生成固定风险分数区间标签。"""
 
     return pd.cut(
         pd.Series(y_proba, dtype="float64").clip(0, 1),
@@ -161,7 +114,7 @@ def assign_probability_band(y_proba: pd.Series) -> pd.Series:
 
 
 def assign_descending_decile(y_proba: pd.Series) -> pd.Series:
-    """按预测概率从高到低生成 decile，1 表示最高风险 10%。"""
+    """按风险分数从高到低生成 decile，1 表示最高风险 10%。"""
 
     proba = pd.Series(y_proba, dtype="float64")
     rank = proba.rank(method="first", ascending=False)
@@ -172,26 +125,19 @@ def assign_descending_decile(y_proba: pd.Series) -> pd.Series:
 def build_model_prediction_results(
     day14_predictions: pd.DataFrame,
     costs: PolicyCosts,
-    final_strategy: str = FINAL_STRATEGY,
-    final_threshold: float = FINAL_THRESHOLD,
+    release_policy: ReleasePolicy,
     created_at: str | None = None,
 ) -> pd.DataFrame:
-    """构造可导入 MySQL 的统一预测结果表。"""
+    """构造统一预测结果表；y_proba 为历史兼容的未校准风险分数字段。"""
 
     selected = _select_final_candidate_predictions(
         day14_predictions,
-        final_strategy=final_strategy,
-        final_threshold=final_threshold,
+        release_policy=release_policy,
     )
 
     y_true_col = _first_existing_column(selected, ["y_true"])
     y_proba_col = _first_existing_column(selected, ["y_proba", "proba", "probability"])
     sample_id_col = "sample_id" if "sample_id" in selected.columns else None
-    strategy_col = _first_existing_column(
-        selected,
-        ["strategy", "candidate_group", "candidate_strategy", "model_name"],
-    )
-
     result = pd.DataFrame()
     result["sample_id"] = (
         selected[sample_id_col].astype(int).to_numpy()
@@ -199,15 +145,23 @@ def build_model_prediction_results(
         else np.arange(1, len(selected) + 1)
     )
     result["dataset"] = OFFICIAL_TEST_DATASET
-    result["model_version"] = FINAL_MODEL_VERSION
-    result["strategy"] = selected[strategy_col].astype(str).to_numpy()
-    result["threshold"] = float(final_threshold)
+    result["model_version"] = release_policy.model_version
+    result["strategy"] = release_policy.strategy
+    result["threshold"] = float(release_policy.decision_threshold)
     result["y_true"] = selected[y_true_col].astype(int).to_numpy()
     result["y_proba"] = selected[y_proba_col].astype(float).to_numpy()
-    result["y_pred"] = (result["y_proba"] >= final_threshold).astype(int)
-    result["risk_level"] = assign_sql_export_risk_level(result["y_proba"])
-    result["suggested_action"] = result["risk_level"].map(RISK_ACTION_MAPPING)
-    result["confusion_type"] = classify_confusion_type(result["y_true"], result["y_pred"])
+    result["y_pred"] = (
+        result["y_proba"] >= release_policy.decision_threshold
+    ).astype(int)
+    result["risk_level"] = assign_risk_level(
+        result["y_proba"],
+        release_policy.decision_threshold,
+    )
+    result["suggested_action"] = assign_suggested_action(result["risk_level"])
+    result["confusion_type"] = classify_prediction_type(
+        result["y_true"],
+        result["y_pred"],
+    )
     result["fp_cost"] = int(costs.fp_cost)
     result["fn_cost"] = int(costs.fn_cost)
     result["sample_cost"] = calculate_sample_cost(
@@ -274,6 +228,7 @@ def build_model_policy_comparison(
     day16_metrics: pd.DataFrame | None,
     day18_oof_summary: pd.DataFrame | None,
     costs: PolicyCosts,
+    release_policy: ReleasePolicy,
 ) -> pd.DataFrame:
     """构造策略级成本对比表。"""
 
@@ -320,23 +275,48 @@ def build_model_policy_comparison(
                 )
             )
 
-        final_rows = day14_metrics[
-            day14_metrics.get("strategy", pd.Series(dtype=str))
+        strategy_mask = (
+            day14_metrics.get("strategy", pd.Series(index=day14_metrics.index, dtype=str))
             .astype(str)
-            .eq(FINAL_STRATEGY)
-        ]
-        if not final_rows.empty:
-            rows.append(
-                _policy_row_from_metrics(
-                    final_rows.iloc[0],
-                    "day14_structural_all_final_candidate",
-                    OFFICIAL_TEST_DATASET,
-                    official_baseline_cost,
-                    costs,
-                    "outputs/metrics/day14_structural_feature_test_results.csv",
-                    "当前最终推荐候选，使用 Day13 valid 选择的 threshold=0.18。",
-                )
-            )
+            .eq(release_policy.strategy)
+        )
+        threshold_values = pd.to_numeric(
+            day14_metrics.get(
+                "threshold",
+                pd.Series(index=day14_metrics.index, dtype=float),
+            ),
+            errors="coerce",
+        )
+        threshold_mask = np.isclose(
+            threshold_values,
+            release_policy.decision_threshold,
+            rtol=0.0,
+            atol=1e-12,
+        )
+        final_rows = day14_metrics[strategy_mask & threshold_mask]
+    else:
+        final_rows = day14_metrics
+
+    if len(final_rows) != 1:
+        raise ValueError(
+            "Day14 metrics 中与 release policy 精确匹配的最终候选必须仅匹配一行："
+            f"strategy={release_policy.strategy}, "
+            f"threshold={release_policy.decision_threshold}，"
+            f"matched_rows={len(final_rows)}。"
+        )
+
+    rows.append(
+        _policy_row_from_metrics(
+            final_rows.iloc[0],
+            release_policy.model_version,
+            OFFICIAL_TEST_DATASET,
+            official_baseline_cost,
+            costs,
+            "outputs/metrics/day14_structural_feature_test_results.csv",
+            "当前最终推荐候选，使用 Day13 valid 选择的 "
+            f"threshold={release_policy.decision_threshold}。",
+        )
+    )
 
     if day16_metrics is not None and not day16_metrics.empty:
         best_day16 = day16_metrics.sort_values("total_cost", ascending=True).iloc[0]
@@ -403,7 +383,7 @@ def build_threshold_sensitivity_results(
     costs: PolicyCosts,
     thresholds: np.ndarray | None = None,
 ) -> pd.DataFrame:
-    """基于最终候选概率生成阈值敏感性表。"""
+    """基于最终候选风险分数生成阈值敏感性表。"""
 
     if thresholds is None:
         thresholds = np.round(np.arange(0.01, 1.00, 0.01), 2)

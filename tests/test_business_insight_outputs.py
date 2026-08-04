@@ -5,6 +5,14 @@ import sys
 from pathlib import Path
 
 import pandas as pd
+import pytest
+
+from scania_aps.config import ReleasePolicy
+from scania_aps.database.sql_business_export import (
+    PolicyCosts,
+    build_model_prediction_results,
+)
+from scania_aps.evaluation.risk_utils import RISK_LEVEL_ORDER
 
 
 def _load_day20_module():
@@ -33,24 +41,24 @@ def _mock_predictions() -> pd.DataFrame:
                 "Critical",
                 "High",
                 "High",
+                "High",
+                "High",
+                "High",
                 "Medium",
                 "Medium",
-                "Medium",
-                "Low",
-                "Low",
                 "Low",
             ],
             "suggested_action": [
-                "immediate_inspection",
-                "immediate_inspection",
-                "priority_inspection",
-                "priority_inspection",
-                "monitor_and_recheck",
-                "monitor_and_recheck",
-                "monitor_and_recheck",
-                "no_action_now",
-                "no_action_now",
-                "no_action_now",
+                "immediate_aps_inspection",
+                "immediate_aps_inspection",
+                "priority_aps_inspection",
+                "priority_aps_inspection",
+                "priority_aps_inspection",
+                "priority_aps_inspection",
+                "priority_aps_inspection",
+                "aps_recheck_or_additional_diagnosis",
+                "aps_recheck_or_additional_diagnosis",
+                "continue_non_aps_diagnosis",
             ],
             "confusion_type": ["TP", "TP", "FP", "FP", "TP", "FP", "FP", "FN", "TN", "TN"],
             "fp_cost": [10] * 10,
@@ -120,6 +128,25 @@ def _mock_policies() -> pd.DataFrame:
     )
 
 
+def _release_policy() -> ReleasePolicy:
+    return ReleasePolicy(
+        target_version="1.0.0",
+        stage="v1_0_release_candidate",
+        model_version="day14_structural_all_final_candidate",
+        model_name="xgboost_scale_pos_weight",
+        strategy="median_all_structural_all",
+        decision_threshold=0.18,
+        threshold_source="day13_valid_best_summary",
+        score_semantics="uncalibrated_risk_score",
+        fit_dataset="train_inner",
+        fit_rows=48000,
+        validation_dataset="valid",
+        validation_rows=12000,
+        evaluation_dataset="official_test",
+        evaluation_rows=16000,
+    )
+
+
 def test_topk_table_has_required_columns() -> None:
     module = _load_day20_module()
 
@@ -139,6 +166,7 @@ def test_topk_table_has_required_columns() -> None:
     }
     assert required.issubset(table.columns)
     assert table.loc[table["top_k"] == 2, "actual_pos_count"].iloc[0] == 2
+    assert table["estimated_workload"].eq(table["inspected_count"]).all()
 
 
 def test_risk_workload_table_has_required_columns() -> None:
@@ -148,13 +176,89 @@ def test_risk_workload_table_has_required_columns() -> None:
 
     required = {
         "risk_level",
-        "sample_count",
+        "tier_population",
         "actual_pos_count",
+        "predicted_pos_count",
         "actual_pos_rate",
-        "avg_predicted_probability",
+        "predicted_pos_rate",
+        "avg_risk_score",
+        "aps_inspection_queue_count",
+        "recheck_queue_count",
     }
     assert required.issubset(table.columns)
+    assert "avg_predicted_probability" not in table.columns
+    assert "estimated_workload" not in table.columns
     assert table["priority_order"].tolist() == sorted(table["priority_order"].tolist())
+    by_tier = table.set_index("risk_level")
+    assert by_tier["tier_population"].to_dict() == {
+        "Critical": 2,
+        "High": 5,
+        "Medium": 2,
+        "Low": 1,
+    }
+    assert by_tier["aps_inspection_queue_count"].to_dict() == {
+        "Critical": 2,
+        "High": 5,
+        "Medium": 0,
+        "Low": 0,
+    }
+    assert by_tier["recheck_queue_count"].to_dict() == {
+        "Critical": 0,
+        "High": 0,
+        "Medium": 2,
+        "Low": 0,
+    }
+
+
+def test_business_summaries_use_the_central_risk_order() -> None:
+    """业务汇总脚本必须复用风险工具中的唯一等级顺序。"""
+
+    module = _load_day20_module()
+
+    assert module.RISK_LEVEL_ORDER is RISK_LEVEL_ORDER
+
+
+def test_risk_policy_flows_from_sql_export_to_workload_summary() -> None:
+    """风险工具生成的等级和动作应原样驱动业务人口及队列汇总。"""
+
+    module = _load_day20_module()
+    source_predictions = pd.DataFrame(
+        {
+            "sample_id": [1, 2, 3, 4],
+            "candidate_group": ["median_all_structural_all"] * 4,
+            "threshold": [0.18] * 4,
+            "y_true": [1, 0, 1, 0],
+            "y_proba": [0.90, 0.50, 0.10, 0.01],
+        }
+    )
+    exported_predictions = build_model_prediction_results(
+        day14_predictions=source_predictions,
+        costs=PolicyCosts(fp_cost=10, fn_cost=500),
+        release_policy=_release_policy(),
+        created_at="2026-08-04 00:00:00",
+    )
+
+    workload = module.build_risk_workload_summary(exported_predictions)
+    by_tier = workload.set_index("risk_level")
+
+    assert by_tier["tier_population"].to_dict() == {
+        "Critical": 1,
+        "High": 1,
+        "Medium": 1,
+        "Low": 1,
+    }
+    assert by_tier["aps_inspection_queue_count"].to_dict() == {
+        "Critical": 1,
+        "High": 1,
+        "Medium": 0,
+        "Low": 0,
+    }
+    assert by_tier["recheck_queue_count"].to_dict() == {
+        "Critical": 0,
+        "High": 0,
+        "Medium": 1,
+        "Low": 0,
+    }
 
 
 def test_decile_lift_gain_table_has_lift() -> None:
@@ -174,17 +278,37 @@ def test_decile_lift_gain_table_has_lift() -> None:
     assert table.loc[table["decile"] == 1, "lift"].iloc[0] > 1.0
 
 
-def test_threshold_highlights_include_final_threshold_018() -> None:
+def test_threshold_highlights_use_explicit_final_threshold() -> None:
     module = _load_day20_module()
     threshold_summary = module.build_threshold_sensitivity_summary(_mock_thresholds())
 
-    highlights = module.build_threshold_policy_highlights(threshold_summary)
+    highlights = module.build_threshold_policy_highlights(
+        threshold_summary,
+        final_threshold=0.18,
+    )
 
     required = {"policy_rule", "threshold", "fp", "fn", "recall", "total_cost"}
     assert required.issubset(highlights.columns)
-    assert "final_threshold_018" in set(highlights["policy_rule"])
-    final_row = highlights.loc[highlights["policy_rule"] == "final_threshold_018"].iloc[0]
+    assert "final_threshold" in set(highlights["policy_rule"])
+    final_row = highlights.loc[highlights["policy_rule"] == "final_threshold"].iloc[0]
     assert final_row["threshold"] == 0.18
+
+
+def test_threshold_highlights_reject_missing_final_threshold() -> None:
+    """敏感性表缺少冻结阈值时不得用最近的阈值代替。"""
+
+    module = _load_day20_module()
+    thresholds = _mock_thresholds().loc[lambda df: df["threshold"].ne(0.18)]
+    threshold_summary = module.build_threshold_sensitivity_summary(thresholds)
+
+    with pytest.raises(
+        ValueError,
+        match="final_threshold.*精确匹配|精确匹配.*final_threshold",
+    ):
+        module.build_threshold_policy_highlights(
+            threshold_summary,
+            final_threshold=0.18,
+        )
 
 
 def test_policy_comparison_keeps_oof_separate_from_official_test() -> None:
@@ -197,3 +321,17 @@ def test_policy_comparison_keeps_oof_separate_from_official_test() -> None:
     assert max(official_positions) < min(oof_positions)
     oof_note = table.loc[table["dataset"].eq("oof_train"), "note"].iloc[0]
     assert "不可与 official test" in oof_note
+
+
+def test_sql_risk_summary_uses_population_and_queue_semantics() -> None:
+    """SQL 风险汇总应与 Python 的层级人口和队列字段保持一致。"""
+
+    sql_path = Path(__file__).resolve().parents[1] / "sql" / "09_risk_workload_analysis.sql"
+    sql = sql_path.read_text(encoding="utf-8")
+
+    assert "COUNT(*) AS tier_population" in sql
+    assert "AVG(y_proba) AS avg_risk_score" in sql
+    assert "AS aps_inspection_queue_count" in sql
+    assert "AS recheck_queue_count" in sql
+    assert "COUNT(*) AS estimated_workload" not in sql
+    assert "avg_predicted_probability" not in sql

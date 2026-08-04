@@ -17,28 +17,44 @@ REQUIRED_PREDICTION_COLUMNS = {
 }
 
 ACTION_MAPPING = {
-    "Critical": "立即检修",
-    "High": "优先检修",
-    "Medium": "观察复查",
-    "Low": "暂不处理",
+    "Critical": "immediate_aps_inspection",
+    "High": "priority_aps_inspection",
+    "Medium": "aps_recheck_or_additional_diagnosis",
+    "Low": "continue_non_aps_diagnosis",
 }
 
 RISK_LEVEL_ORDER = ["Critical", "High", "Medium", "Low"]
+CRITICAL_RISK_LOWER_BOUND = 0.80
+MEDIUM_RISK_LOWER_BOUND = 0.05
+
+
+def _validate_decision_threshold(value: Any) -> float:
+    """校验决策阈值能形成互不重叠的四档风险区间。"""
+
+    if isinstance(value, bool) or not isinstance(value, (int, float, np.number)):
+        raise ValueError("decision_threshold 必须是数值。")
+    threshold = float(value)
+    if not np.isfinite(threshold) or not (
+        MEDIUM_RISK_LOWER_BOUND < threshold < CRITICAL_RISK_LOWER_BOUND
+    ):
+        raise ValueError(
+            "decision_threshold 必须大于 0.05 且小于 0.80。"
+        )
+    return threshold
 
 
 def assign_risk_level(y_proba: Any, best_threshold: float) -> pd.Series:
-    """根据预测概率和低成本阈值划分风险等级。"""
+    """根据风险分数和调用方传入的决策阈值划分风险等级。"""
 
     proba = pd.Series(y_proba, dtype="float64")
-    if not 0 <= best_threshold <= 1:
-        raise ValueError("best_threshold 必须位于 0 到 1 之间。")
+    decision_threshold = _validate_decision_threshold(best_threshold)
 
     levels = np.select(
         [
-            proba >= 0.80,
-            (proba >= best_threshold) & (proba < 0.80),
-            (proba >= 0.05) & (proba < best_threshold),
-            proba < 0.05,
+            proba >= CRITICAL_RISK_LOWER_BOUND,
+            (proba >= decision_threshold) & (proba < CRITICAL_RISK_LOWER_BOUND),
+            (proba >= MEDIUM_RISK_LOWER_BOUND) & (proba < decision_threshold),
+            proba < MEDIUM_RISK_LOWER_BOUND,
         ],
         ["Critical", "High", "Medium", "Low"],
         default="Unknown",
@@ -50,10 +66,10 @@ def assign_suggested_action(risk_level: Any) -> pd.Series | str:
     """根据风险等级给出维修动作建议。"""
 
     if isinstance(risk_level, str):
-        return ACTION_MAPPING.get(risk_level, "人工复核")
+        return ACTION_MAPPING.get(risk_level, "manual_review")
 
     levels = pd.Series(risk_level)
-    return levels.map(ACTION_MAPPING).fillna("人工复核")
+    return levels.map(ACTION_MAPPING).fillna("manual_review")
 
 
 def classify_prediction_type(y_true: Any, y_pred: Any) -> pd.Series:

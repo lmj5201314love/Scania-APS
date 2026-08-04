@@ -16,7 +16,6 @@ sys.path.append(str(PROJECT_ROOT / "src"))
 
 from scania_aps.config import get_config
 from scania_aps.database.sql_business_export import (
-    FINAL_THRESHOLD,
     PolicyCosts,
     build_export_manifest,
     build_model_policy_comparison,
@@ -59,7 +58,7 @@ def main() -> None:
     model_prediction_results = build_model_prediction_results(
         day14_predictions=day14_predictions,
         costs=costs,
-        final_threshold=FINAL_THRESHOLD,
+        release_policy=cfg.release,
     )
     model_policy_comparison = build_model_policy_comparison(
         prediction_results=model_prediction_results,
@@ -67,6 +66,7 @@ def main() -> None:
         day16_metrics=day16_metrics,
         day18_oof_summary=day18_oof_summary,
         costs=costs,
+        release_policy=cfg.release,
     )
     threshold_sensitivity_results = build_threshold_sensitivity_results(
         prediction_results=model_prediction_results,
@@ -96,7 +96,7 @@ def main() -> None:
             ),
             (
                 threshold_path,
-                "基于 Day14 final candidate 概率的阈值敏感性分析结果。",
+                "基于 Day14 final candidate 风险分数的阈值敏感性分析结果。",
                 "threshold_sensitivity_results",
             ),
         ]

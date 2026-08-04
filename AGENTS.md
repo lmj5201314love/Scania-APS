@@ -57,7 +57,7 @@ FN 代表真实 APS 故障被漏掉，业务风险高于 FP。因此本项目不
 
 ## 当前阶段优先级
 
-当前已完成 Final Notebook 收口，进入 Final Packaging Day 5 / v1.0 Release Contract 阶段。本阶段只冻结机器可读的 release policy、评估指标命名以及训练 / 验证 / 评估范围；final candidate 仍为 Day14 `median_all_structural_all`，decision threshold 仍为 `0.18`。official test 是公开基准测试集，不是新的盲测数据；模型输出在公开叙事中称为风险分数，不称为校准概率。本阶段不重新训练、不重新选择 threshold、不修改 `data/raw/`、不重新生成 outputs、不修改 final notebook code cell。风险等级边界和动作逻辑留到下一阶段处理。
+当前进入 v1.0 Risk Policy Alignment（收口计划 Day 3）阶段。Day 2 已冻结机器可读的 `ReleasePolicy`，final candidate 仍为 Day14 `median_all_structural_all`，decision threshold 仍为 `0.18`。本阶段只统一当前业务交付路径中的风险等级、动作 code、层级人口、APS 检查队列、复核队列及调用方参数传递；不重新训练、不重新选择 threshold、不运行 `scripts/17_prepare_sql_business_tables.py`、`scripts/18_generate_business_insight_figures.py` 或 `scripts/19_model_interpretability.py`，不重新生成 outputs，不修改 notebook、README 和最终报告。SQL exports、final tables、figures 和业务报告留到 Day 4 重建。
 
 ## Agent skills
 

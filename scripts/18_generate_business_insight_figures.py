@@ -22,10 +22,13 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.append(str(PROJECT_ROOT / "src"))
 
 from scania_aps.config import get_config
+from scania_aps.evaluation.risk_utils import RISK_LEVEL_ORDER
 
-FINAL_THRESHOLD = 0.18
 TOP_K_VALUES = [50, 100, 200, 500, 1000]
-RISK_ORDER = {"Critical": 1, "High": 2, "Medium": 3, "Low": 4}
+RISK_ORDER = {
+    risk_level: priority
+    for priority, risk_level in enumerate(RISK_LEVEL_ORDER, start=1)
+}
 CONFUSION_ORDER = {"TP": 1, "FP": 2, "FN": 3, "TN": 4}
 OFFICIAL_POLICY_ORDER = {
     "naive_all_negative": 1,
@@ -143,10 +146,10 @@ def build_risk_workload_summary(predictions: pd.DataFrame) -> pd.DataFrame:
     grouped = (
         official.groupby(["risk_level", "suggested_action"], dropna=False)
         .agg(
-            sample_count=("sample_id", "count"),
+            tier_population=("sample_id", "count"),
             actual_pos_count=("y_true", "sum"),
             predicted_pos_count=("y_pred", "sum"),
-            avg_predicted_probability=("y_proba", "mean"),
+            avg_risk_score=("y_proba", "mean"),
         )
         .reset_index()
     )
@@ -173,33 +176,42 @@ def build_risk_workload_summary(predictions: pd.DataFrame) -> pd.DataFrame:
         how="left",
     )
     result["actual_pos_rate"] = result.apply(
-        lambda row: _safe_divide(row["actual_pos_count"], row["sample_count"]),
+        lambda row: _safe_divide(row["actual_pos_count"], row["tier_population"]),
         axis=1,
     )
     result["predicted_pos_rate"] = result.apply(
-        lambda row: _safe_divide(row["predicted_pos_count"], row["sample_count"]),
+        lambda row: _safe_divide(row["predicted_pos_count"], row["tier_population"]),
         axis=1,
     )
     result["tp_count"] = result["TP"].astype(int)
     result["fp_count"] = result["FP"].astype(int)
     result["fn_count"] = result["FN"].astype(int)
-    result["estimated_workload"] = result["sample_count"].astype(int)
+    inspection_tiers = result["risk_level"].isin(["Critical", "High"])
+    result["aps_inspection_queue_count"] = result["predicted_pos_count"].where(
+        inspection_tiers,
+        0,
+    ).astype(int)
+    result["recheck_queue_count"] = result["tier_population"].where(
+        result["risk_level"].eq("Medium"),
+        0,
+    ).astype(int)
     result["priority_order"] = (
         result["risk_level"].map(RISK_ORDER).fillna(99).astype(int)
     )
     columns = [
         "risk_level",
         "suggested_action",
-        "sample_count",
+        "tier_population",
         "actual_pos_count",
         "predicted_pos_count",
         "actual_pos_rate",
         "predicted_pos_rate",
-        "avg_predicted_probability",
+        "avg_risk_score",
         "tp_count",
         "fp_count",
         "fn_count",
-        "estimated_workload",
+        "aps_inspection_queue_count",
+        "recheck_queue_count",
         "priority_order",
     ]
     return result[columns].sort_values(["priority_order", "suggested_action"])
@@ -373,18 +385,23 @@ def _best_row(frame: pd.DataFrame, note: str) -> dict[str, object] | None:
 
 def build_threshold_policy_highlights(
     threshold_summary: pd.DataFrame,
-    final_threshold: float = FINAL_THRESHOLD,
+    final_threshold: float,
 ) -> pd.DataFrame:
     rows: list[dict[str, object]] = []
-    final_distance = (threshold_summary["threshold"] - final_threshold).abs()
-    final_row = threshold_summary.loc[[final_distance.idxmin()]].copy()
-    if not final_row.empty:
-        record = final_row.iloc[0].to_dict()
-        record["policy_rule"] = "final_threshold_018"
-        record["note"] = (
-            "Current Day14 final threshold. Sensitivity table is not used to change it."
+    threshold_values = pd.to_numeric(threshold_summary["threshold"], errors="coerce")
+    final_rows = threshold_summary.loc[threshold_values.eq(float(final_threshold))]
+    if len(final_rows) != 1:
+        raise ValueError(
+            "final_threshold 必须在 threshold sensitivity table 中精确匹配且仅匹配一行："
+            f"final_threshold={final_threshold}，matched_rows={len(final_rows)}。"
         )
-        rows.append(record)
+
+    record = final_rows.iloc[0].to_dict()
+    record["policy_rule"] = "final_threshold"
+    record["note"] = (
+        "Current Day14 final threshold. Sensitivity table is not used to change it."
+    )
+    rows.append(record)
 
     rules = [
         (
@@ -508,6 +525,7 @@ def build_all_tables(
     thresholds: pd.DataFrame,
     fp_cost: int,
     fn_cost: int,
+    final_threshold: float,
 ) -> dict[str, pd.DataFrame]:
     del fp_cost
     threshold_summary = build_threshold_sensitivity_summary(thresholds)
@@ -521,7 +539,8 @@ def build_all_tables(
         "final_decile_lift_gain_summary": build_decile_lift_gain_summary(predictions),
         "final_threshold_sensitivity_summary": threshold_summary,
         "final_threshold_policy_highlights": build_threshold_policy_highlights(
-            threshold_summary
+            threshold_summary,
+            final_threshold=final_threshold,
         ),
         "final_policy_cost_comparison": build_policy_cost_comparison(policies),
     }
@@ -591,8 +610,14 @@ def plot_risk_level_workload(risk_summary: pd.DataFrame, output_dir: Path) -> Pa
     risk = risk_summary.sort_values("priority_order")
     x = range(len(risk))
     fig, ax1 = plt.subplots(figsize=(8, 5))
-    ax1.bar(x, risk["sample_count"], color="#4c78a8", alpha=0.85, label="Sample count")
-    ax1.set_ylabel("Sample count")
+    ax1.bar(
+        x,
+        risk["tier_population"],
+        color="#4c78a8",
+        alpha=0.85,
+        label="Tier population",
+    )
+    ax1.set_ylabel("Tier population")
     ax1.set_xlabel("Risk level")
     ax1.set_xticks(list(x))
     ax1.set_xticklabels(risk["risk_level"])
@@ -606,7 +631,7 @@ def plot_risk_level_workload(risk_summary: pd.DataFrame, output_dir: Path) -> Pa
     lines, labels = ax1.get_legend_handles_labels()
     lines2, labels2 = ax2.get_legend_handles_labels()
     ax1.legend(lines + lines2, labels + labels2, loc="upper right")
-    plt.title("Risk Level Workload and Actual Fault Rate")
+    plt.title("Risk Tier Population and Actual APS Fault Rate")
     path = output_dir / "final_risk_level_workload.png"
     _save_current_figure(path)
     return path
@@ -641,7 +666,11 @@ def plot_decile_lift_gain(decile: pd.DataFrame, output_dir: Path) -> Path:
     return path
 
 
-def plot_threshold_sensitivity(threshold_summary: pd.DataFrame, output_dir: Path) -> list[Path]:
+def plot_threshold_sensitivity(
+    threshold_summary: pd.DataFrame,
+    output_dir: Path,
+    final_threshold: float,
+) -> list[Path]:
     paths: list[Path] = []
     plt.figure(figsize=(8, 5))
     plt.plot(
@@ -650,7 +679,12 @@ def plot_threshold_sensitivity(threshold_summary: pd.DataFrame, output_dir: Path
         color="#4c78a8",
         linewidth=2,
     )
-    plt.axvline(FINAL_THRESHOLD, color="#c2410c", linestyle="--", label="Final threshold = 0.18")
+    plt.axvline(
+        final_threshold,
+        color="#c2410c",
+        linestyle="--",
+        label=f"Final threshold = {final_threshold:.2f}",
+    )
     plt.xlabel("Threshold")
     plt.ylabel("Total cost")
     plt.title("Threshold Sensitivity: Total Cost")
@@ -662,7 +696,12 @@ def plot_threshold_sensitivity(threshold_summary: pd.DataFrame, output_dir: Path
 
     plt.figure(figsize=(8, 5))
     plt.plot(threshold_summary["threshold"], threshold_summary["fn"], color="#c2410c")
-    plt.axvline(FINAL_THRESHOLD, color="#4b5563", linestyle="--", label="Final threshold = 0.18")
+    plt.axvline(
+        final_threshold,
+        color="#4b5563",
+        linestyle="--",
+        label=f"Final threshold = {final_threshold:.2f}",
+    )
     plt.xlabel("Threshold")
     plt.ylabel("False negatives")
     plt.title("Threshold Sensitivity: FN Curve")
@@ -678,7 +717,12 @@ def plot_threshold_sensitivity(threshold_summary: pd.DataFrame, output_dir: Path
         threshold_summary["workload_rate"],
         color="#2f855a",
     )
-    plt.axvline(FINAL_THRESHOLD, color="#4b5563", linestyle="--", label="Final threshold = 0.18")
+    plt.axvline(
+        final_threshold,
+        color="#4b5563",
+        linestyle="--",
+        label=f"Final threshold = {final_threshold:.2f}",
+    )
     plt.xlabel("Threshold")
     plt.ylabel("Predicted positive workload rate")
     plt.title("Threshold Sensitivity: Workload Curve")
@@ -715,7 +759,11 @@ def plot_confusion_error_breakdown(error_table: pd.DataFrame, output_dir: Path) 
     return path
 
 
-def save_figures(tables: dict[str, pd.DataFrame], output_dir: Path) -> dict[str, Path | list[Path]]:
+def save_figures(
+    tables: dict[str, pd.DataFrame],
+    output_dir: Path,
+    final_threshold: float,
+) -> dict[str, Path | list[Path]]:
     output_dir.mkdir(parents=True, exist_ok=True)
     return {
         "cost_policy": plot_cost_policy_comparison(
@@ -734,6 +782,7 @@ def save_figures(tables: dict[str, pd.DataFrame], output_dir: Path) -> dict[str,
         "threshold": plot_threshold_sensitivity(
             tables["final_threshold_sensitivity_summary"],
             output_dir,
+            final_threshold=final_threshold,
         ),
         "confusion": plot_confusion_error_breakdown(
             tables["final_error_breakdown_summary"],
@@ -754,7 +803,10 @@ def _highlight_row(highlights: pd.DataFrame, policy_rule: str) -> pd.Series | No
     return None if rows.empty else rows.iloc[0]
 
 
-def build_markdown_report(tables: dict[str, pd.DataFrame]) -> str:
+def build_markdown_report(
+    tables: dict[str, pd.DataFrame],
+    final_threshold: float,
+) -> str:
     topk = tables["final_topk_maintenance_capacity"]
     risk = tables["final_risk_workload_summary"]
     policy = tables["final_policy_cost_comparison"]
@@ -771,7 +823,7 @@ def build_markdown_report(tables: dict[str, pd.DataFrame]) -> str:
     decile_2 = decile.loc[decile["decile"] == 2].iloc[0]
     decile_3 = decile.loc[decile["decile"] == 3].iloc[0]
 
-    final_threshold = _highlight_row(threshold, "final_threshold_018")
+    final_threshold_row = _highlight_row(threshold, "final_threshold")
     min_cost = _highlight_row(threshold, "min_cost_threshold")
     recall_096 = _highlight_row(threshold, "min_cost_with_recall_ge_096")
     recall_097 = _highlight_row(threshold, "min_cost_with_recall_ge_097")
@@ -808,9 +860,11 @@ def build_markdown_report(tables: dict[str, pd.DataFrame]) -> str:
     risk_lines = []
     for row in risk.itertuples():
         risk_lines.append(
-            f"- {row.risk_level}: {int(row.sample_count)} samples, "
+            f"- {row.risk_level}: tier_population={int(row.tier_population)}, "
             f"{int(row.actual_pos_count)} positives, "
             f"actual_pos_rate = {_format_pct(row.actual_pos_rate)}, "
+            f"APS inspection queue={int(row.aps_inspection_queue_count)}, "
+            f"recheck queue={int(row.recheck_queue_count)}, "
             f"suggested_action = `{row.suggested_action}`."
         )
 
@@ -835,7 +889,8 @@ def build_markdown_report(tables: dict[str, pd.DataFrame]) -> str:
             "## 1. 当前最终候选方案",
             "",
             "当前最终候选仍是 Day14 `structural_all / median_all_structural_all`，"
-            "使用 Day13 valid 阶段确定的 threshold=0.18，并只在 official test 上做最终观察。",
+            f"使用 Day13 valid 阶段确定的 threshold={final_threshold:.2f}，"
+            "并只在 official test 上做最终观察。",
             "",
             f"- model_version: `day14_structural_all_final_candidate`",
             f"- threshold: {final['threshold']:.2f}",
@@ -849,7 +904,7 @@ def build_markdown_report(tables: dict[str, pd.DataFrame]) -> str:
             "",
             "## 2. Top-K 维修容量分析",
             "",
-            "如果维修团队只能检查预测概率最高的 Top-K 匿名样本，覆盖真实 APS 故障的结果如下：",
+            "如果维修团队只能检查风险分数最高的 Top-K 匿名样本，覆盖真实 APS 故障的结果如下：",
             "",
             *topk_lines,
             "",
@@ -857,7 +912,7 @@ def build_markdown_report(tables: dict[str, pd.DataFrame]) -> str:
             "",
             "![Top-K maintenance capacity](../outputs/figures/final/final_topk_maintenance_capacity.png)",
             "",
-            "## 3. 风险等级与维修工作量",
+            "## 3. 风险层级人口与业务队列",
             "",
             *risk_lines,
             "",
@@ -892,14 +947,18 @@ def build_markdown_report(tables: dict[str, pd.DataFrame]) -> str:
             "",
             "## 6. 阈值敏感性分析",
             "",
-            threshold_line("final threshold=0.18", final_threshold),
+            threshold_line(
+                f"final threshold={final_threshold:.2f}",
+                final_threshold_row,
+            ),
             threshold_line("min cost threshold", min_cost),
             threshold_line("min cost with recall >= 0.96", recall_096),
             threshold_line("min cost with recall >= 0.97", recall_097),
             threshold_line("min cost with FN <= 15", fn_15),
             threshold_line("min cost with FN <= 12", fn_12),
             "",
-            "这些结果只用于策略敏感性展示，不能用来反向修改最终 threshold；最终推荐阈值仍保留 Day14 的 0.18。",
+            "这些结果只用于策略敏感性展示，不能用来反向修改最终 threshold；"
+            f"最终推荐阈值仍保留 Day14 的 {final_threshold:.2f}。",
             "",
             "![Threshold sensitivity](../outputs/figures/final/final_threshold_sensitivity.png)",
             "",
@@ -918,17 +977,21 @@ def build_markdown_report(tables: dict[str, pd.DataFrame]) -> str:
             "",
             "- 业务成本角度：final candidate 将 naive baseline 的漏报成本主导问题大幅压低，official test total_cost 为 9980。",
             "- 维修容量角度：Top-K 队列可以把有限检修资源集中到高风险匿名样本上，而不是平均分配。",
-            "- 风险分层角度：Critical / High 适合作为优先检修队列，Medium / Low 更适合作复查或暂缓处理。",
-            "- 模型排序角度：decile=1 的 lift 显著高于 1，说明概率排序对真实 APS 故障有富集能力。",
+            "- 风险分层角度：Critical / High 进入 APS 检查队列，Medium 进入复核队列，Low 继续非 APS 故障诊断。",
+            "- 模型排序角度：decile=1 的 lift 显著高于 1，说明风险分数排序对真实 APS 故障有富集能力。",
             "- 阈值策略角度：阈值变化会同时改变工作量、FN 和成本；敏感性分析用于解释策略，不用于反向选择最终阈值。",
             "",
         ]
     )
 
 
-def save_report(tables: dict[str, pd.DataFrame], report_path: Path) -> None:
+def save_report(
+    tables: dict[str, pd.DataFrame],
+    report_path: Path,
+    final_threshold: float,
+) -> None:
     report_path.parent.mkdir(parents=True, exist_ok=True)
-    report = build_markdown_report(tables)
+    report = build_markdown_report(tables, final_threshold=final_threshold)
     report_path.write_text(report, encoding="utf-8")
     print(f"[REPORT] {report_path}")
 
@@ -963,10 +1026,19 @@ def main() -> None:
         thresholds=thresholds,
         fp_cost=int(cfg.false_positive_cost),
         fn_cost=int(cfg.false_negative_cost),
+        final_threshold=cfg.release.decision_threshold,
     )
     save_tables(tables, paths.final_table_dir)
-    save_figures(tables, paths.final_figure_dir)
-    save_report(tables, paths.report_path)
+    save_figures(
+        tables,
+        paths.final_figure_dir,
+        final_threshold=cfg.release.decision_threshold,
+    )
+    save_report(
+        tables,
+        paths.report_path,
+        final_threshold=cfg.release.decision_threshold,
+    )
 
     print("Day20 SQL business insight outputs generated.")
     print("No MySQL connection, model training, threshold reselection, or raw data edit was performed.")
