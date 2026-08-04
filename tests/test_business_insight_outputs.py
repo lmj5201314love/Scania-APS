@@ -146,6 +146,7 @@ def _release_policy(
     *,
     model_version: str = "day14_structural_all_final_candidate",
     strategy: str = "median_all_structural_all",
+    evaluation_rows: int = 16000,
 ) -> ReleasePolicy:
     return ReleasePolicy(
         target_version="1.0.0",
@@ -161,7 +162,7 @@ def _release_policy(
         validation_dataset="valid",
         validation_rows=12000,
         evaluation_dataset="official_test",
-        evaluation_rows=16000,
+        evaluation_rows=evaluation_rows,
     )
 
 
@@ -242,9 +243,13 @@ def test_risk_policy_flows_from_sql_export_to_workload_summary() -> None:
     module = _load_day20_module()
     source_predictions = pd.DataFrame(
         {
+            "dataset": ["official_test"] * 4,
             "sample_id": [1, 2, 3, 4],
+            "model_name": ["xgboost_scale_pos_weight"] * 4,
+            "strategy": ["median_all_structural_all"] * 4,
             "candidate_group": ["median_all_structural_all"] * 4,
             "threshold": [0.18] * 4,
+            "threshold_source": ["day13_valid_best_summary"] * 4,
             "y_true": [1, 0, 1, 0],
             "y_proba": [0.90, 0.50, 0.10, 0.01],
         }
@@ -252,7 +257,7 @@ def test_risk_policy_flows_from_sql_export_to_workload_summary() -> None:
     exported_predictions = build_model_prediction_results(
         day14_predictions=source_predictions,
         costs=PolicyCosts(fp_cost=10, fn_cost=500),
-        release_policy=_release_policy(),
+        release_policy=_release_policy(evaluation_rows=4),
         created_at="2026-08-04 00:00:00",
     )
 

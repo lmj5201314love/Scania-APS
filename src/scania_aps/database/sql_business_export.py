@@ -59,15 +59,25 @@ def _select_final_candidate_predictions(
 ) -> pd.DataFrame:
     """从 Day14 predictions 中筛选最终候选方案。"""
 
-    strategy_col = _first_existing_column(
-        predictions,
-        ["candidate_group", "candidate_strategy", "strategy", "model_name"],
-    )
-    threshold_col = _first_existing_column(predictions, ["threshold"])
+    required_columns = {
+        "candidate_group",
+        "dataset",
+        "model_name",
+        "sample_id",
+        "strategy",
+        "threshold",
+        "threshold_source",
+    }
+    missing_columns = required_columns - set(predictions.columns)
+    if missing_columns:
+        raise ValueError(
+            "Day14 predictions 缺少发布来源字段："
+            f"{sorted(missing_columns)}。"
+        )
 
-    strategy_mask = predictions[strategy_col].astype(str).eq(release_policy.strategy)
+    strategy_mask = predictions["candidate_group"].astype(str).eq(release_policy.strategy)
     threshold_mask = np.isclose(
-        predictions[threshold_col].astype(float),
+        predictions["threshold"].astype(float),
         release_policy.decision_threshold,
         rtol=0.0,
         atol=1e-12,
@@ -79,6 +89,40 @@ def _select_final_candidate_predictions(
             "未能在 Day14 predictions 中找到与 release policy 精确匹配的候选："
             f"strategy={release_policy.strategy}, "
             f"threshold={release_policy.decision_threshold}。"
+        )
+
+    expected_provenance = {
+        "model_name": release_policy.model_name,
+        "dataset": release_policy.evaluation_dataset,
+        "strategy": release_policy.strategy,
+        "threshold_source": release_policy.threshold_source,
+    }
+    for field, expected_value in expected_provenance.items():
+        invalid_values = selected.loc[
+            selected[field].astype(str).ne(str(expected_value)),
+            field,
+        ]
+        if not invalid_values.empty:
+            actual_values = sorted(invalid_values.astype(str).unique().tolist())
+            raise ValueError(
+                f"Day14 predictions 的 {field} 与 release policy 不一致："
+                f"expected={expected_value}, actual={actual_values}。"
+            )
+
+    if len(selected) != release_policy.evaluation_rows:
+        raise ValueError(
+            "Day14 predictions 最终候选行数与 release policy.evaluation_rows "
+            "不一致："
+            f"expected={release_policy.evaluation_rows}, actual={len(selected)}。"
+        )
+
+    if selected["sample_id"].isna().any():
+        raise ValueError("Day14 predictions 的 sample_id 不得为空。")
+    if selected["sample_id"].duplicated().any():
+        duplicate_count = int(selected["sample_id"].duplicated(keep=False).sum())
+        raise ValueError(
+            "Day14 predictions 的 sample_id 必须唯一："
+            f"duplicate_rows={duplicate_count}。"
         )
 
     return selected.reset_index(drop=True)
@@ -144,7 +188,7 @@ def build_model_prediction_results(
         if sample_id_col
         else np.arange(1, len(selected) + 1)
     )
-    result["dataset"] = OFFICIAL_TEST_DATASET
+    result["dataset"] = release_policy.evaluation_dataset
     result["model_version"] = release_policy.model_version
     result["strategy"] = release_policy.strategy
     result["threshold"] = float(release_policy.decision_threshold)
@@ -257,6 +301,21 @@ def build_model_policy_comparison(
     ]
 
     if not day14_metrics.empty:
+        required_metrics_columns = {
+            "candidate_group",
+            "dataset",
+            "model_name",
+            "strategy",
+            "threshold",
+            "threshold_source",
+        }
+        missing_metrics_columns = required_metrics_columns - set(day14_metrics.columns)
+        if missing_metrics_columns:
+            raise ValueError(
+                "Day14 metrics 缺少发布来源字段："
+                f"{sorted(missing_metrics_columns)}。"
+            )
+
         baseline_rows = day14_metrics[
             day14_metrics.get("strategy", pd.Series(dtype=str))
             .astype(str)
@@ -305,9 +364,24 @@ def build_model_policy_comparison(
             f"matched_rows={len(final_rows)}。"
         )
 
+    final_metrics = final_rows.iloc[0]
+    expected_metrics_provenance = {
+        "model_name": release_policy.model_name,
+        "dataset": release_policy.evaluation_dataset,
+        "candidate_group": release_policy.strategy,
+        "threshold_source": release_policy.threshold_source,
+    }
+    for field, expected_value in expected_metrics_provenance.items():
+        actual_value = str(final_metrics[field])
+        if actual_value != str(expected_value):
+            raise ValueError(
+                f"Day14 metrics 的 {field} 与 release policy 不一致："
+                f"expected={expected_value}, actual={actual_value}。"
+            )
+
     rows.append(
         _policy_row_from_metrics(
-            final_rows.iloc[0],
+            final_metrics,
             release_policy.model_version,
             OFFICIAL_TEST_DATASET,
             official_baseline_cost,
