@@ -15,14 +15,28 @@ from scania_aps.database.sql_business_export import (
 from scania_aps.evaluation.risk_utils import RISK_LEVEL_ORDER
 
 
-def _load_day20_module():
-    script_path = Path(__file__).resolve().parents[1] / "scripts" / "18_generate_business_insight_figures.py"
-    spec = importlib.util.spec_from_file_location("day20_business_insights", script_path)
+def _load_script_module(script_name: str, module_name: str):
+    script_path = Path(__file__).resolve().parents[1] / "scripts" / script_name
+    spec = importlib.util.spec_from_file_location(module_name, script_path)
     module = importlib.util.module_from_spec(spec)
     assert spec.loader is not None
     sys.modules[spec.name] = module
     spec.loader.exec_module(module)
     return module
+
+
+def _load_day19_module():
+    return _load_script_module(
+        "17_prepare_sql_business_tables.py",
+        "day19_sql_business_tables",
+    )
+
+
+def _load_day20_module():
+    return _load_script_module(
+        "18_generate_business_insight_figures.py",
+        "day20_business_insights",
+    )
 
 
 def _mock_predictions() -> pd.DataFrame:
@@ -128,13 +142,17 @@ def _mock_policies() -> pd.DataFrame:
     )
 
 
-def _release_policy() -> ReleasePolicy:
+def _release_policy(
+    *,
+    model_version: str = "day14_structural_all_final_candidate",
+    strategy: str = "median_all_structural_all",
+) -> ReleasePolicy:
     return ReleasePolicy(
         target_version="1.0.0",
         stage="v1_0_release_candidate",
-        model_version="day14_structural_all_final_candidate",
+        model_version=model_version,
         model_name="xgboost_scale_pos_weight",
-        strategy="median_all_structural_all",
+        strategy=strategy,
         decision_threshold=0.18,
         threshold_source="day13_valid_best_summary",
         score_semantics="uncalibrated_risk_score",
@@ -314,13 +332,79 @@ def test_threshold_highlights_reject_missing_final_threshold() -> None:
 def test_policy_comparison_keeps_oof_separate_from_official_test() -> None:
     module = _load_day20_module()
 
-    table = module.build_policy_cost_comparison(_mock_policies())
+    table = module.build_policy_cost_comparison(
+        _mock_policies(),
+        release_policy=_release_policy(),
+    )
 
     official_positions = table.index[table["dataset"].eq("official_test")].tolist()
     oof_positions = table.index[table["dataset"].eq("oof_train")].tolist()
     assert max(official_positions) < min(oof_positions)
     oof_note = table.loc[table["dataset"].eq("oof_train"), "note"].iloc[0]
     assert "不可与 official test" in oof_note
+
+
+def test_business_report_uses_release_policy_metadata() -> None:
+    """业务表和报告应从完整发布政策读取 final candidate 元数据。"""
+
+    module = _load_day20_module()
+    release_policy = _release_policy(
+        model_version="resume_release_candidate",
+        strategy="resume_policy_strategy",
+    )
+    policies = _mock_policies().copy()
+    policies.loc[
+        policies["policy_name"].eq("day14_structural_all_final_candidate"),
+        "policy_name",
+    ] = release_policy.model_version
+
+    tables = module.build_all_tables(
+        predictions=_mock_predictions(),
+        policies=policies,
+        thresholds=_mock_thresholds(),
+        fp_cost=10,
+        fn_cost=500,
+        release_policy=release_policy,
+    )
+    report = module.build_markdown_report(
+        tables,
+        release_policy=release_policy,
+    )
+
+    official_policies = tables["final_policy_cost_comparison"].loc[
+        lambda df: df["dataset"].eq("official_test"), "policy_name"
+    ]
+    assert official_policies.tolist() == [
+        "naive_all_negative",
+        "day14_baseline_median_all",
+        release_policy.model_version,
+        "day16_tuned_best",
+    ]
+    assert f"`{release_policy.model_version}`" in report
+    assert f"`{release_policy.strategy}`" in report
+    assert "day14_structural_all_final_candidate" not in report
+
+
+def test_sql_export_manifest_uses_release_policy_metadata() -> None:
+    """SQL 导出 manifest 不应写死历史 final candidate 名称。"""
+
+    module = _load_day19_module()
+    release_policy = _release_policy(
+        model_version="resume_release_candidate",
+        strategy="resume_policy_strategy",
+    )
+
+    entries = module.build_export_manifest_entries(
+        prediction_path=Path("model_prediction_results.csv"),
+        policy_path=Path("model_policy_comparison.csv"),
+        threshold_path=Path("threshold_sensitivity_results.csv"),
+        release_policy=release_policy,
+    )
+    descriptions = " ".join(description for _, description, _ in entries)
+
+    assert release_policy.model_version in descriptions
+    assert release_policy.strategy in descriptions
+    assert "Day14 structural_all" not in descriptions
 
 
 def test_sql_risk_summary_uses_population_and_queue_semantics() -> None:

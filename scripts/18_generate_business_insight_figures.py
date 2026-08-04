@@ -21,7 +21,7 @@ import matplotlib.pyplot as plt
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.append(str(PROJECT_ROOT / "src"))
 
-from scania_aps.config import get_config
+from scania_aps.config import ReleasePolicy, get_config
 from scania_aps.evaluation.risk_utils import RISK_LEVEL_ORDER
 
 TOP_K_VALUES = [50, 100, 200, 500, 1000]
@@ -30,12 +30,15 @@ RISK_ORDER = {
     for priority, risk_level in enumerate(RISK_LEVEL_ORDER, start=1)
 }
 CONFUSION_ORDER = {"TP": 1, "FP": 2, "FN": 3, "TN": 4}
-OFFICIAL_POLICY_ORDER = {
-    "naive_all_negative": 1,
-    "day14_baseline_median_all": 2,
-    "day14_structural_all_final_candidate": 3,
-    "day16_tuned_best": 4,
-}
+
+
+def _official_policy_order(release_policy: ReleasePolicy) -> dict[str, int]:
+    return {
+        "naive_all_negative": 1,
+        "day14_baseline_median_all": 2,
+        release_policy.model_version: 3,
+        "day16_tuned_best": 4,
+    }
 
 
 @dataclass(frozen=True)
@@ -471,7 +474,10 @@ def build_threshold_policy_highlights(
     ]
 
 
-def build_policy_cost_comparison(policies: pd.DataFrame) -> pd.DataFrame:
+def build_policy_cost_comparison(
+    policies: pd.DataFrame,
+    release_policy: ReleasePolicy,
+) -> pd.DataFrame:
     _require_columns(
         policies,
         [
@@ -500,7 +506,9 @@ def build_policy_cost_comparison(policies: pd.DataFrame) -> pd.DataFrame:
         )
     )
     result["_dataset_order"] = result["dataset"].map({"official_test": 1, "oof_train": 2}).fillna(9)
-    result["_policy_order"] = result["policy_name"].map(OFFICIAL_POLICY_ORDER).fillna(99)
+    result["_policy_order"] = (
+        result["policy_name"].map(_official_policy_order(release_policy)).fillna(99)
+    )
     result = result.sort_values(["_dataset_order", "_policy_order", "policy_name"]).reset_index(drop=True)
     return result[
         [
@@ -525,7 +533,7 @@ def build_all_tables(
     thresholds: pd.DataFrame,
     fp_cost: int,
     fn_cost: int,
-    final_threshold: float,
+    release_policy: ReleasePolicy,
 ) -> dict[str, pd.DataFrame]:
     del fp_cost
     threshold_summary = build_threshold_sensitivity_summary(thresholds)
@@ -540,9 +548,12 @@ def build_all_tables(
         "final_threshold_sensitivity_summary": threshold_summary,
         "final_threshold_policy_highlights": build_threshold_policy_highlights(
             threshold_summary,
-            final_threshold=final_threshold,
+            final_threshold=release_policy.decision_threshold,
         ),
-        "final_policy_cost_comparison": build_policy_cost_comparison(policies),
+        "final_policy_cost_comparison": build_policy_cost_comparison(
+            policies,
+            release_policy=release_policy,
+        ),
     }
 
 
@@ -565,9 +576,15 @@ def _save_current_figure(path: Path) -> None:
     print(f"[FIGURE] {path}")
 
 
-def plot_cost_policy_comparison(policy_table: pd.DataFrame, output_dir: Path) -> Path:
+def plot_cost_policy_comparison(
+    policy_table: pd.DataFrame,
+    output_dir: Path,
+    release_policy: ReleasePolicy,
+) -> Path:
     official = policy_table.loc[policy_table["dataset"] == "official_test"].copy()
-    official["_policy_order"] = official["policy_name"].map(OFFICIAL_POLICY_ORDER).fillna(99)
+    official["_policy_order"] = (
+        official["policy_name"].map(_official_policy_order(release_policy)).fillna(99)
+    )
     official = official.sort_values("_policy_order")
     labels = official["policy_name"].str.replace("_", "\n")
 
@@ -762,13 +779,14 @@ def plot_confusion_error_breakdown(error_table: pd.DataFrame, output_dir: Path) 
 def save_figures(
     tables: dict[str, pd.DataFrame],
     output_dir: Path,
-    final_threshold: float,
+    release_policy: ReleasePolicy,
 ) -> dict[str, Path | list[Path]]:
     output_dir.mkdir(parents=True, exist_ok=True)
     return {
         "cost_policy": plot_cost_policy_comparison(
             tables["final_policy_cost_comparison"],
             output_dir,
+            release_policy=release_policy,
         ),
         "topk": plot_topk_capacity(tables["final_topk_maintenance_capacity"], output_dir),
         "risk_level": plot_risk_level_workload(
@@ -782,7 +800,7 @@ def save_figures(
         "threshold": plot_threshold_sensitivity(
             tables["final_threshold_sensitivity_summary"],
             output_dir,
-            final_threshold=final_threshold,
+            final_threshold=release_policy.decision_threshold,
         ),
         "confusion": plot_confusion_error_breakdown(
             tables["final_error_breakdown_summary"],
@@ -805,7 +823,7 @@ def _highlight_row(highlights: pd.DataFrame, policy_rule: str) -> pd.Series | No
 
 def build_markdown_report(
     tables: dict[str, pd.DataFrame],
-    final_threshold: float,
+    release_policy: ReleasePolicy,
 ) -> str:
     topk = tables["final_topk_maintenance_capacity"]
     risk = tables["final_risk_workload_summary"]
@@ -814,7 +832,7 @@ def build_markdown_report(
     threshold = tables["final_threshold_policy_highlights"]
     errors = tables["final_error_breakdown_summary"]
 
-    final = _policy_row(policy, "day14_structural_all_final_candidate")
+    final = _policy_row(policy, release_policy.model_version)
     naive = _policy_row(policy, "naive_all_negative")
     baseline = _policy_row(policy, "day14_baseline_median_all")
     tuned = _policy_row(policy, "day16_tuned_best")
@@ -888,11 +906,13 @@ def build_markdown_report(
             "",
             "## 1. 当前最终候选方案",
             "",
-            "当前最终候选仍是 Day14 `structural_all / median_all_structural_all`，"
-            f"使用 Day13 valid 阶段确定的 threshold={final_threshold:.2f}，"
+            f"当前最终候选使用模型 `{release_policy.model_name}` 与策略 "
+            f"`{release_policy.strategy}`，"
+            f"阈值来源为 `{release_policy.threshold_source}`，"
+            f"threshold={release_policy.decision_threshold:.2f}，"
             "并只在 official test 上做最终观察。",
             "",
-            f"- model_version: `day14_structural_all_final_candidate`",
+            f"- model_version: `{release_policy.model_version}`",
             f"- threshold: {final['threshold']:.2f}",
             f"- TP / FP / TN / FN: {confusion_counts.get('TP', 0)} / {confusion_counts.get('FP', 0)} / {confusion_counts.get('TN', 0)} / {confusion_counts.get('FN', 0)}",
             f"- total_cost: {int(final['total_cost'])}",
@@ -925,7 +945,7 @@ def build_markdown_report(
             "",
             f"- naive_all_negative total_cost = {int(naive['total_cost'])}.",
             f"- day14_baseline_median_all total_cost = {int(baseline['total_cost'])}.",
-            f"- day14_structural_all_final_candidate total_cost = {int(final['total_cost'])}.",
+            f"- {release_policy.model_version} total_cost = {int(final['total_cost'])}.",
             f"- day16_tuned_best total_cost = {int(tuned['total_cost'])}.",
             f"- final candidate 相对 naive baseline 成本下降 {int(final['cost_reduction'])}，下降率 {_format_pct(final['cost_reduction_rate'])}.",
             f"- final candidate 相对 Day14 baseline 降低 {int(baseline['total_cost'] - final['total_cost'])} 成本。",
@@ -948,7 +968,7 @@ def build_markdown_report(
             "## 6. 阈值敏感性分析",
             "",
             threshold_line(
-                f"final threshold={final_threshold:.2f}",
+                f"final threshold={release_policy.decision_threshold:.2f}",
                 final_threshold_row,
             ),
             threshold_line("min cost threshold", min_cost),
@@ -958,7 +978,7 @@ def build_markdown_report(
             threshold_line("min cost with FN <= 12", fn_12),
             "",
             "这些结果只用于策略敏感性展示，不能用来反向修改最终 threshold；"
-            f"最终推荐阈值仍保留 Day14 的 {final_threshold:.2f}。",
+            f"最终推荐阈值仍保留发布政策中的 {release_policy.decision_threshold:.2f}。",
             "",
             "![Threshold sensitivity](../outputs/figures/final/final_threshold_sensitivity.png)",
             "",
@@ -988,10 +1008,10 @@ def build_markdown_report(
 def save_report(
     tables: dict[str, pd.DataFrame],
     report_path: Path,
-    final_threshold: float,
+    release_policy: ReleasePolicy,
 ) -> None:
     report_path.parent.mkdir(parents=True, exist_ok=True)
-    report = build_markdown_report(tables, final_threshold=final_threshold)
+    report = build_markdown_report(tables, release_policy=release_policy)
     report_path.write_text(report, encoding="utf-8")
     print(f"[REPORT] {report_path}")
 
@@ -1026,18 +1046,18 @@ def main() -> None:
         thresholds=thresholds,
         fp_cost=int(cfg.false_positive_cost),
         fn_cost=int(cfg.false_negative_cost),
-        final_threshold=cfg.release.decision_threshold,
+        release_policy=cfg.release,
     )
     save_tables(tables, paths.final_table_dir)
     save_figures(
         tables,
         paths.final_figure_dir,
-        final_threshold=cfg.release.decision_threshold,
+        release_policy=cfg.release,
     )
     save_report(
         tables,
         paths.report_path,
-        final_threshold=cfg.release.decision_threshold,
+        release_policy=cfg.release,
     )
 
     print("Day20 SQL business insight outputs generated.")

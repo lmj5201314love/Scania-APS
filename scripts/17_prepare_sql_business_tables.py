@@ -14,7 +14,7 @@ import pandas as pd
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.append(str(PROJECT_ROOT / "src"))
 
-from scania_aps.config import get_config
+from scania_aps.config import ReleasePolicy, get_config
 from scania_aps.database.sql_business_export import (
     PolicyCosts,
     build_export_manifest,
@@ -31,6 +31,34 @@ def read_optional_csv(path: Path) -> pd.DataFrame | None:
         print(f"[WARN] 可选文件不存在，已跳过：{path}")
         return None
     return pd.read_csv(path)
+
+
+def build_export_manifest_entries(
+    prediction_path: Path,
+    policy_path: Path,
+    threshold_path: Path,
+    release_policy: ReleasePolicy,
+) -> list[tuple[Path, str, str]]:
+    """根据发布政策构造 SQL 导出文件的 manifest 元数据。"""
+
+    return [
+        (
+            prediction_path,
+            f"发布候选 {release_policy.model_version}（strategy={release_policy.strategy}）"
+            "的 official test 样本级预测结果。",
+            "model_prediction_results",
+        ),
+        (
+            policy_path,
+            "naive baseline、发布候选、Day16 和 Day18 OOF 的策略级成本对比。",
+            "model_policy_comparison",
+        ),
+        (
+            threshold_path,
+            f"基于发布候选 {release_policy.model_version} 风险分数的阈值敏感性分析结果。",
+            "threshold_sensitivity_results",
+        ),
+    ]
 
 
 def main() -> None:
@@ -83,23 +111,12 @@ def main() -> None:
     threshold_sensitivity_results.to_csv(threshold_path, index=False, encoding="utf-8-sig")
 
     manifest = build_export_manifest(
-        [
-            (
-                prediction_path,
-                "Day14 structural_all final candidate 的 official test 样本级预测结果。",
-                "model_prediction_results",
-            ),
-            (
-                policy_path,
-                "naive baseline、Day14、Day16 和 Day18 OOF 的策略级成本对比。",
-                "model_policy_comparison",
-            ),
-            (
-                threshold_path,
-                "基于 Day14 final candidate 风险分数的阈值敏感性分析结果。",
-                "threshold_sensitivity_results",
-            ),
-        ]
+        build_export_manifest_entries(
+            prediction_path=prediction_path,
+            policy_path=policy_path,
+            threshold_path=threshold_path,
+            release_policy=cfg.release,
+        )
     )
     manifest.to_csv(manifest_path, index=False, encoding="utf-8-sig")
 

@@ -6,6 +6,8 @@ from pathlib import Path
 
 import pandas as pd
 
+from scania_aps.models.train_advanced import build_prediction_frame
+
 
 def _assert_columns_exist(path: Path, required_columns: set[str]) -> None:
     """检查 CSV 可读取且包含必要列。"""
@@ -36,22 +38,29 @@ def test_day6_best_threshold_summary_schema() -> None:
 
 
 def test_day5_prediction_schema() -> None:
-    """Day 5 预测文件应包含 validation 对比所需基础字段。"""
+    """Day 5 预测生成接口应包含 validation 对比所需基础字段。"""
 
-    path = Path("outputs/predictions/day5_model_compare_predictions.csv")
-    _assert_columns_exist(
-        path,
-        {
-            "dataset",
-            "sample_id",
-            "y_true",
-            "y_proba",
-            "y_pred",
-            "model_name",
-            "strategy",
-            "threshold",
-        },
+    predictions = build_prediction_frame(
+        dataset="test",
+        y_true=pd.Series([1, 0]),
+        y_proba=pd.Series([0.9, 0.1]),
+        y_pred=pd.Series([1, 0]),
+        model_name="schema_test_model",
+        strategy="schema_test_strategy",
+        threshold=0.18,
     )
+
+    assert predictions.columns.tolist() == [
+        "dataset",
+        "sample_id",
+        "y_true",
+        "y_proba",
+        "y_pred",
+        "model_name",
+        "strategy",
+        "threshold",
+    ]
+    assert predictions["sample_id"].tolist() == [1, 2]
 
 
 def test_validation_outputs_schema_if_generated() -> None:

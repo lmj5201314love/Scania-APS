@@ -91,6 +91,38 @@ def _predict_with_threshold(
     return y_pred, y_proba
 
 
+def build_prediction_frame(
+    *,
+    dataset: str,
+    y_true: Sequence[int] | np.ndarray | pd.Series,
+    y_proba: Sequence[float] | np.ndarray | pd.Series | None,
+    y_pred: Sequence[int] | np.ndarray | pd.Series,
+    model_name: str,
+    strategy: str,
+    threshold: float,
+) -> pd.DataFrame:
+    """构造 Day 5 模型对比使用的样本级预测表。"""
+
+    y_true_values = np.asarray(y_true)
+    probability_values = (
+        np.asarray(y_proba)
+        if y_proba is not None
+        else np.full(len(y_true_values), np.nan)
+    )
+    return pd.DataFrame(
+        {
+            "dataset": dataset,
+            "sample_id": np.arange(1, len(y_true_values) + 1),
+            "y_true": y_true_values,
+            "y_proba": probability_values,
+            "y_pred": np.asarray(y_pred),
+            "model_name": model_name,
+            "strategy": strategy,
+            "threshold": threshold,
+        }
+    )
+
+
 def _append_model_result(
     metrics_rows: list[dict],
     predictions: list[pd.DataFrame],
@@ -128,17 +160,14 @@ def _append_model_result(
     metrics_rows.append(metric)
 
     predictions.append(
-        pd.DataFrame(
-            {
-                "dataset": "test",
-                "sample_id": np.arange(1, len(y_test) + 1),
-                "y_true": y_test.to_numpy(),
-                "y_proba": y_proba if y_proba is not None else np.nan,
-                "y_pred": y_pred,
-                "model_name": model_name,
-                "strategy": strategy,
-                "threshold": threshold,
-            }
+        build_prediction_frame(
+            dataset="test",
+            y_true=y_test,
+            y_proba=y_proba,
+            y_pred=y_pred,
+            model_name=model_name,
+            strategy=strategy,
+            threshold=threshold,
         )
     )
 
