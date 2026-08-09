@@ -1,5 +1,5 @@
-﻿risk_level,suggested_action,sample_count,actual_pos_count,predicted_pos_count,actual_pos_rate,predicted_pos_rate,avg_predicted_probability,tp_count,fp_count,fn_count,estimated_workload,priority_order
-Critical,immediate_inspection,404,316,404,0.7821782178217822,1.0,0.9623729731435643,316,88,0,404,1
-High,priority_inspection,321,46,321,0.14330218068535824,1.0,0.45476714249221184,46,275,0,321,2
-Medium,monitor_and_recheck,414,8,36,0.01932367149758454,0.08695652173913043,0.10507912378502415,1,35,7,414,3
-Low,no_action_now,14861,5,0,0.0003364511136531862,0.0,0.003503498667991723,0,0,5,14861,4
+﻿risk_level,suggested_action,tier_population,actual_pos_count,predicted_pos_count,actual_pos_rate,predicted_pos_rate,avg_risk_score,tp_count,fp_count,fn_count,aps_inspection_queue_count,recheck_queue_count,priority_order
+Critical,immediate_aps_inspection,404,316,404,0.7821782178217822,1.0,0.9623729731435643,316,88,0,404,0,1
+High,priority_aps_inspection,357,47,357,0.13165266106442577,1.0,0.4281306530532213,47,310,0,357,0,2
+Medium,aps_recheck_or_additional_diagnosis,378,7,0,0.018518518518518517,0.0,0.09693218742592594,0,0,7,0,378,3
+Low,continue_non_aps_diagnosis,14861,5,0,0.0003364511136531862,0.0,0.003503498667991723,0,0,5,0,0,4

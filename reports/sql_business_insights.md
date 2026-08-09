@@ -4,7 +4,7 @@
 
 ## 1. 当前最终候选方案
 
-当前最终候选仍是 Day14 `structural_all / median_all_structural_all`，使用 Day13 valid 阶段确定的 threshold=0.18，并只在 official test 上做最终观察。
+当前最终候选使用模型 `xgboost_scale_pos_weight` 与策略 `median_all_structural_all`，阈值来源为 `day13_valid_best_summary`，threshold=0.18，并只在 official test 上做最终观察。
 
 - model_version: `day14_structural_all_final_candidate`
 - threshold: 0.18
@@ -17,7 +17,7 @@
 
 ## 2. Top-K 维修容量分析
 
-如果维修团队只能检查预测概率最高的 Top-K 匿名样本，覆盖真实 APS 故障的结果如下：
+如果维修团队只能检查风险分数最高的 Top-K 匿名样本，覆盖真实 APS 故障的结果如下：
 
 - Top 50: hit 50 positives, recall@K = 13.33%, precision@K = 100.00%.
 - Top 100: hit 100 positives, recall@K = 26.67%, precision@K = 100.00%.
@@ -29,12 +29,12 @@
 
 ![Top-K maintenance capacity](../outputs/figures/final/final_topk_maintenance_capacity.png)
 
-## 3. 风险等级与维修工作量
+## 3. 风险层级人口与业务队列
 
-- Critical: 404 samples, 316 positives, actual_pos_rate = 78.22%, suggested_action = `immediate_inspection`.
-- High: 321 samples, 46 positives, actual_pos_rate = 14.33%, suggested_action = `priority_inspection`.
-- Medium: 414 samples, 8 positives, actual_pos_rate = 1.93%, suggested_action = `monitor_and_recheck`.
-- Low: 14861 samples, 5 positives, actual_pos_rate = 0.03%, suggested_action = `no_action_now`.
+- Critical: tier_population=404, 316 positives, actual_pos_rate = 78.22%, APS inspection queue=404, recheck queue=0, suggested_action = `immediate_aps_inspection`.
+- High: tier_population=357, 47 positives, actual_pos_rate = 13.17%, APS inspection queue=357, recheck queue=0, suggested_action = `priority_aps_inspection`.
+- Medium: tier_population=378, 7 positives, actual_pos_rate = 1.85%, APS inspection queue=0, recheck queue=378, suggested_action = `aps_recheck_or_additional_diagnosis`.
+- Low: tier_population=14861, 5 positives, actual_pos_rate = 0.03%, APS inspection queue=0, recheck queue=0, suggested_action = `continue_non_aps_diagnosis`.
 
 Critical / High 是最适合优先检修的层级，但 High 中仍包含较多 FP，意味着高风险队列会带来额外检查工作量。`sample_id` 仅表示匿名样本编号，不是真实车辆 ID。
 
@@ -73,7 +73,7 @@ Day18 OOF policy 在 CSV 中保留为 `oof_train`，只用于内部稳定性观�
 - min cost with FN <= 15: threshold=0.07, workload=1016 (6.35%), FP=647, FN=6, recall=98.40%, total_cost=9470.
 - min cost with FN <= 12: threshold=0.07, workload=1016 (6.35%), FP=647, FN=6, recall=98.40%, total_cost=9470.
 
-这些结果只用于策略敏感性展示，不能用来反向修改最终 threshold；最终推荐阈值仍保留 Day14 的 0.18。
+这些结果只用于策略敏感性展示，不能用来反向修改最终 threshold；最终推荐阈值仍保留发布政策中的 0.18。
 
 ![Threshold sensitivity](../outputs/figures/final/final_threshold_sensitivity.png)
 
@@ -81,7 +81,7 @@ Day18 OOF policy 在 CSV 中保留为 `oof_train`，只用于内部稳定性观�
 
 - TP=363, FP=398, TN=15227, FN=12.
 - FN by risk_level: Medium: 7, Low: 5.
-- FP by risk_level: Critical: 88, High: 275, Medium: 35.
+- FP by risk_level: Critical: 88, High: 310.
 
 FN 是 APS 项目中最关键的业务风险；后续 Day21 的模型解释性 / SHAP 分析可以优先聚焦 FN 和高置信 FP 样本，但不能虚构匿名字段的真实物理含义。
 
@@ -91,6 +91,6 @@ FN 是 APS 项目中最关键的业务风险；后续 Day21 的模型解释性 /
 
 - 业务成本角度：final candidate 将 naive baseline 的漏报成本主导问题大幅压低，official test total_cost 为 9980。
 - 维修容量角度：Top-K 队列可以把有限检修资源集中到高风险匿名样本上，而不是平均分配。
-- 风险分层角度：Critical / High 适合作为优先检修队列，Medium / Low 更适合作复查或暂缓处理。
-- 模型排序角度：decile=1 的 lift 显著高于 1，说明概率排序对真实 APS 故障有富集能力。
+- 风险分层角度：Critical / High 进入 APS 检查队列，Medium 进入复核队列，Low 继续非 APS 故障诊断。
+- 模型排序角度：decile=1 的 lift 显著高于 1，说明风险分数排序对真实 APS 故障有富集能力。
 - 阈值策略角度：阈值变化会同时改变工作量、FN 和成本；敏感性分析用于解释策略，不用于反向选择最终阈值。

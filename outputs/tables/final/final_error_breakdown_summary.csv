@@ -16,11 +16,9 @@ confusion_type_by_probability_band,TN,,"[0.00,0.05)",14856,0.003496537426388328,
 confusion_type_by_probability_band,TN,,"[0.05,0.10)",220,0.07044644898636364,0
 confusion_type_by_probability_band,TN,,"[0.10,0.20)",151,0.1354669034503311,0
 confusion_type_by_risk_level,TP,Critical,,316,0.9786280066772153,0
-confusion_type_by_risk_level,TP,High,,46,0.5312908391304348,0
-confusion_type_by_risk_level,TP,Medium,,1,0.18637171,0
+confusion_type_by_risk_level,TP,High,,47,0.5239521342553192,0
 confusion_type_by_risk_level,FP,Critical,,88,0.9040026254545453,880
-confusion_type_by_risk_level,FP,High,,275,0.44196681505454544,2750
-confusion_type_by_risk_level,FP,Medium,,35,0.19074339114285715,350
+confusion_type_by_risk_level,FP,High,,310,0.4136028800967742,3100
 confusion_type_by_risk_level,FN,Medium,,7,0.09809223557142857,3500
 confusion_type_by_risk_level,FN,Low,,5,0.02418673972,2500
 confusion_type_by_risk_level,TN,Medium,,371,0.09691029972506737,0

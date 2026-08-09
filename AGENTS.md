@@ -57,7 +57,7 @@ FN 代表真实 APS 故障被漏掉，业务风险高于 FP。因此本项目不
 
 ## 当前阶段优先级
 
-当前进入 v1.0 Risk Policy Alignment（收口计划 Day 3）阶段。Day 2 已冻结机器可读的 `ReleasePolicy`，final candidate 仍为 Day14 `median_all_structural_all`，decision threshold 仍为 `0.18`。本阶段只统一当前业务交付路径中的风险等级、动作 code、层级人口、APS 检查队列、复核队列及调用方参数传递；不重新训练、不重新选择 threshold、不运行 `scripts/17_prepare_sql_business_tables.py`、`scripts/18_generate_business_insight_figures.py` 或 `scripts/19_model_interpretability.py`，不重新生成 outputs，不修改 notebook、README 和最终报告。SQL exports、final tables、figures 和业务报告留到 Day 4 重建。
+当前进入 v1.0 Business Artifact Rebuild & Consistency Verification（收口计划 Day 4）阶段。Day 2 已冻结机器可读的 `ReleasePolicy`，Day 3 已完成 Risk Policy Alignment 和 provenance validation。本阶段允许依次运行 `scripts/17_prepare_sql_business_tables.py` 和 `scripts/18_generate_business_insight_figures.py`，但不运行 `scripts/19_model_interpretability.py`；不重新训练、不调参、不重新选择 threshold，不修改 `data/raw/`、notebook、根 README、最终项目报告或解释性产物。本轮只重建 SQL exports、Day20 业务 tables/figures 和 `reports/sql_business_insights.md`。
 
 ## Agent skills
 
