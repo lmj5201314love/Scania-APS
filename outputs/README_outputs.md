@@ -1,17 +1,20 @@
 # outputs 产物说明与阅读索引
 
-本文件用于解释 `outputs/` 目录下各类运行产物的来源、作用和主要结论。  
-这些文件是本地分析结果，通常不应强行提交到 GitHub；正式展示时优先引用 `README.md`、`reports/project_report.md` 和 `reports/summary.md`。
+本文件用于解释 `outputs/` 目录下各类运行产物的来源、作用和主要结论。训练中间产物通常只保留在本地；仓库提交必要的 final tables、final figures、metrics 摘要和 SQL 业务导出。
+
+v1.0 最终口径为 Day14 `median_all_structural_all`：threshold `0.18`，AP `0.9055`，FP `398`，FN `12`，total cost `9980`。风险人口为 `404 / 357 / 378 / 14,861`，APS 检查队列 `761`，复核队列 `378`。
+
+Day6 的 `0.20 / 8640` 和 Day7 旧风险分层只是历史回溯，不代表最终方案。历史字段 `y_proba` 表示未校准风险分数，不应解释为故障概率。
 
 ## 阅读顺序建议
 
 如果只是快速看项目结果，建议按下面顺序阅读：
 
 1. `outputs/metrics/day14_structural_feature_test_results.csv`
-2. `outputs/metrics/feature_ablation_final_test_results.csv`
-3. `outputs/metrics/final_test_evaluation_from_valid_selection.csv`
-4. `outputs/tables/day7_business_result_summary.csv`
-5. `outputs/tables/day7_risk_level_summary.csv`
+2. `outputs/sql_exports/model_prediction_results.csv`
+3. `outputs/tables/final/final_policy_cost_comparison.csv`
+4. `outputs/tables/final/final_risk_workload_summary.csv`
+5. `outputs/tables/final/final_topk_maintenance_capacity.csv`
 
 如果要追溯完整项目过程，再依次查看 Day 2 数据质量、Day 6 阈值分析、Day 10/11/12/13 结构特征分析相关文件。
 
@@ -21,7 +24,7 @@
 |---|---|
 | `outputs/tables/` | 数据质量分析、业务汇总、风险分层、结构特征设计等表格产物 |
 | `outputs/metrics/` | 模型指标、阈值分析、valid/test 对比、结构特征实验结果 |
-| `outputs/predictions/` | 模型预测概率、预测标签、样本级预测明细 |
+| `outputs/predictions/` | 未校准风险分数、预测标签、样本级预测明细；训练中间 CSV 不提交 Git |
 | `outputs/figures/` | 缺失值、阈值曲线、字段分布、前缀组分析等图表 |
 
 ## 关键结论速查
@@ -33,7 +36,7 @@
 - FP，误报成本：`10`
 - FN，漏报成本：`500`
 
-因此不能只看 accuracy，而要重点看 recall、F2、PR-AUC、FN 和 total cost。
+因此不能只看 accuracy，而要重点看 recall、F2、Average Precision（AP）、FN 和 total cost。
 
 ### 当前最重要结果
 
@@ -41,12 +44,12 @@ Day 14 对 Day 13 valid 选出的结构特征候选方案做了 official test �
 
 | 方案 | 阈值来源 | Precision | Recall | F2 | AP | FP | FN | Total Cost | 结论 |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---|
-| `median_all_structural_all` | Day 13 valid | 0.4770 | 0.9680 | 0.8027 | 0.9055 | 398 | 12 | 9980 | official test 成本最低，但包含 60 个结构特征，只能作为上限观察 |
+| `median_all_structural_all` | Day 13 valid | 0.4770 | 0.9680 | 0.8027 | 0.9055 | 398 | 12 | 9980 | v1.0 最终候选 |
 | `baseline_median_all` | Day 13 valid | 0.4559 | 0.9653 | 0.7890 | 0.9086 | 432 | 13 | 10820 | 稳定基线 |
 | `median_all_prefix_zero_rate` | Day 13 valid | 0.3846 | 0.9733 | 0.7452 | 0.9093 | 584 | 10 | 10840 | FN 最低，但 FP 明显升高 |
 | `median_all_selected_missing_indicators_top30` | Day 13 valid | 0.5457 | 0.9387 | 0.8205 | 0.9085 | 293 | 23 | 14430 | valid 表现较好，但 test 泛化不足 |
 
-当前建议：不要直接把 `structural_all` 写成最终主方案。下一步更适合拆解结构特征贡献，筛出更稳、更少的结构特征组合。
+当前结论：后续调参和 OOF ensemble 均未稳定超过该方案，因此 v1.0 冻结 `median_all_structural_all`，不再继续扩模或重新选择阈值。
 
 ## tables 文件说明
 
@@ -75,11 +78,11 @@ Day 14 对 Day 13 valid 选出的结构特征候选方案做了 official test �
 
 这些文件用于 Day 3 SQL 复核，不是建模输入。
 
-### Day 7 风险分层和业务结果
+### Day 7 历史回溯：风险分层和业务结果
 
 | 文件 | 作用 | 主要结论 |
 |---|---|---|
-| `day7_maintenance_priority_list.csv` | 样本级维修优先级清单 | 包含预测概率、风险等级、建议动作 |
+| `day7_maintenance_priority_list.csv` | 历史样本级维修优先级清单 | 包含旧风险分数、风险等级和已废弃动作，仅用于开发追溯 |
 | `day7_risk_level_summary.csv` | 风险等级汇总 | Critical / High / Medium / Low 分层可支持维修排序 |
 | `day7_business_result_summary.csv` | 业务成本汇总 | 测试集回溯方案 total cost 为 8640，相比 naive baseline 下降 95.39% |
 
@@ -106,9 +109,9 @@ Day 14 对 Day 13 valid 选出的结构特征候选方案做了 official test �
 | 文件 | 作用 | 主要结论 |
 |---|---|---|
 | `day4_baseline_metrics.csv` | Dummy / Logistic baseline 指标 | Logistic + `drop_high_missing_median` 默认阈值下 total cost 为 17180，明显优于 Dummy |
-| `day5_model_compare_metrics.csv` | Random Forest / XGBoost 默认阈值对比 | XGBoost 默认阈值下 F2 / PR-AUC 较强，但默认阈值成本仍有优化空间 |
+| `day5_model_compare_metrics.csv` | Random Forest / XGBoost 默认阈值对比 | XGBoost 默认阈值下 F2 / AP 较强，但默认阈值成本仍有优化空间 |
 
-### Day 6 阈值成本分析
+### Day 6 历史回溯：阈值成本分析
 
 | 文件 | 作用 | 主要结论 |
 |---|---|---|
@@ -157,14 +160,14 @@ Day 14 对 Day 13 valid 选出的结构特征候选方案做了 official test �
 |---|---|---|
 | `day13_structural_feature_valid_threshold_metrics.csv` | Day 13 结构特征组在 valid 上的完整阈值网格 | 只用于 valid 阶段选择，不看 official test |
 | `day13_structural_feature_valid_best_summary.csv` | Day 13 每个结构特征组的 valid 最佳阈值 | `structural_all` valid total cost 最低，为 5850；但只是上限观察 |
-| `day14_structural_feature_test_results.csv` | Day 14 固定候选方案在 official test 上的最终观察 | `structural_all` test total cost 为 9980，但不能直接当最终主方案 |
+| `day14_structural_feature_test_results.csv` | Day 14 固定候选方案在 official test 上的最终观察 | `structural_all` threshold=0.18、AP=0.9055、FP=398、FN=12、total cost=9980，为 v1.0 最终方案 |
 | `day14_structural_feature_valid_test_compare.csv` | Day 13 valid 结果与 Day 14 test 结果对比 | `selected_missing_indicators_top30` valid 较好，但 test 上 FN 增加，泛化不足 |
 
 ## predictions 文件说明
 
 | 文件 | 作用 | 使用场景 |
 |---|---|---|
-| `day4_baseline_predictions.csv` | Day 4 Dummy / Logistic baseline 预测明细 | 追溯 baseline 预测概率和标签 |
+| `day4_baseline_predictions.csv` | Day 4 Dummy / Logistic baseline 预测明细 | 追溯 baseline 风险分数和标签 |
 | `day5_model_compare_predictions.csv` | Day 5 RF / XGBoost 预测明细 | Day 6 阈值分析的数据来源 |
 | `validation_predictions.csv` | validation-based 流程中 valid 预测明细 | 检查 valid 阈值选择输入 |
 | `final_test_predictions_from_valid_selection.csv` | valid 选择后 official test 预测明细 | 检查严谨流程下的 test 预测 |
@@ -180,6 +183,8 @@ Day 14 对 Day 13 valid 选出的结构特征候选方案做了 official test �
 - `model_name`
 - `strategy`
 - `threshold`
+
+其中 `y_proba` 是历史兼容字段名，统一解释为未校准风险分数。
 
 ## figures 文件说明
 
@@ -364,7 +369,7 @@ Day17 输出只来自 official train 内部的 OOF / Repeated CV 实验，不包
 
 本次本地运行实际使用 `5 folds x 1 repeat`，配置文件仍保留默认 `5 folds x 2 repeats`。若后续离线复盘可按配置跑满更大规模。
 
-## Day 18 OOF Probability Ensemble 输出说明
+## Day 18 OOF Risk Score Ensemble 输出说明
 
 Day18 输出只来自 official train 内部 OOF 实验，不包含 official test 结果，不应解释为最终模型效果。
 
@@ -373,7 +378,7 @@ Day18 输出只来自 official train 内部 OOF 实验，不包含 official test
 | 文件 | 说明 |
 |---|---|
 | `outputs/predictions/day18_oof_base_raw_predictions.csv` | 三个 base strategy 在每个 fold_valid 上的原始 OOF 预测。 |
-| `outputs/predictions/day18_oof_base_averaged_predictions.csv` | 按 sample 和 base strategy 聚合后的 OOF 平均概率；当前为 5 folds x 1 repeat。 |
+| `outputs/predictions/day18_oof_base_averaged_predictions.csv` | 按 sample 和 base strategy 聚合后的 OOF 平均风险分数；当前为 5 folds x 1 repeat。 |
 | `outputs/predictions/day18_oof_ensemble_predictions.csv` | 12 个固定 recipe 生成的 OOF ensemble score。 |
 
 ### metrics
@@ -415,9 +420,9 @@ Day 19 不做建模，只把当前最终候选 `median_all_structural_all` 的 o
 
 | 文件 | 说明 |
 |---|---|
-| `outputs/sql_exports/model_prediction_results.csv` | Day14 `median_all_structural_all` final candidate 的 official test 样本级预测结果，包含 risk level、confusion type、sample cost、probability band 和 decile。 |
+| `outputs/sql_exports/model_prediction_results.csv` | Day14 `median_all_structural_all` final candidate 的 official test 样本级结果，包含 risk level、confusion type、sample cost、历史兼容字段 `probability_band` 和 decile。 |
 | `outputs/sql_exports/model_policy_comparison.csv` | naive baseline、Day14 baseline、Day14 final candidate、Day16 tuned best 和 Day18 OOF best 的策略级成本对比。注意 OOF 结果不可与 official test 直接横向比较。 |
-| `outputs/sql_exports/threshold_sensitivity_results.csv` | 基于 final candidate 概率的 0.01-0.99 阈值敏感性表，只用于业务策略观察，不用于修改最终阈值。 |
+| `outputs/sql_exports/threshold_sensitivity_results.csv` | 基于 final candidate 风险分数的 0.01-0.99 阈值敏感性表，只用于业务策略观察，不用于修改最终阈值。 |
 | `outputs/sql_exports/sql_export_manifest.csv` | Day19 导出文件清单，记录行数、列数、目标 MySQL 表和生成时间。 |
 
 ### sql files
@@ -427,7 +432,7 @@ Day 19 不做建模，只把当前最终候选 `median_all_structural_all` 的 o
 | `sql/00_create_business_analysis_tables.sql` | 创建 Day19 业务分析 MySQL 表。 |
 | `sql/08_topk_maintenance_capacity_analysis.sql` | Top-K 维修容量分析：检查 Top 50/100/200/500/1000 高风险样本时能覆盖多少真实故障。 |
 | `sql/09_risk_workload_analysis.sql` | 风险等级与维修工作量分析。 |
-| `sql/10_prediction_error_analysis.sql` | TP/FP/TN/FN、FP/FN 风险档和概率区间错误分析。 |
+| `sql/10_prediction_error_analysis.sql` | TP/FP/TN/FN、FP/FN 风险档和风险分数区间错误分析。 |
 | `sql/11_business_cost_policy_comparison.sql` | naive baseline、Day14、Day16、Day18 OOF 的成本策略对比。 |
 | `sql/12_model_monitoring_template.sql` | 未来上线批次监控模板，不代表已有生产数据。 |
 | `sql/13_decile_lift_gain_analysis.sql` | decile / lift / gain 排序能力分析。 |
@@ -443,10 +448,10 @@ Day20 不做建模、不重新选择 threshold、不连接 MySQL，只读取 Day
 |---|---|
 | `outputs/tables/final/final_topk_maintenance_capacity.csv` | Top-K 维修容量分析，展示 Top 50/100/200/500/1000 高风险匿名样本覆盖多少真实 APS 故障。 |
 | `outputs/tables/final/final_risk_workload_summary.csv` | 按 `risk_level` 和 `suggested_action` 汇总样本数、真实故障率、预测正类数、TP/FP/FN 和工作量。 |
-| `outputs/tables/final/final_error_breakdown_summary.csv` | 按 confusion type、risk level 和 probability band 汇总错误来源与样本成本。 |
-| `outputs/tables/final/final_decile_lift_gain_summary.csv` | Decile / lift / gain 分析，`decile=1` 表示预测概率最高的 10% 样本。 |
-| `outputs/tables/final/final_threshold_sensitivity_summary.csv` | 基于 Day14 final candidate 概率的 threshold sensitivity 汇总，使用标准列名 `precision`、`recall`、`f2`。 |
-| `outputs/tables/final/final_threshold_policy_highlights.csv` | `final_threshold_018`、min cost、recall floor、FN floor 等策略敏感性高亮；不用于反向修改最终阈值。 |
+| `outputs/tables/final/final_error_breakdown_summary.csv` | 按 confusion type、risk level 和风险分数区间汇总错误来源与样本成本。 |
+| `outputs/tables/final/final_decile_lift_gain_summary.csv` | Decile / lift / gain 分析，`decile=1` 表示风险分数最高的 10% 样本。 |
+| `outputs/tables/final/final_threshold_sensitivity_summary.csv` | 基于 Day14 final candidate 风险分数的 threshold sensitivity 汇总，使用标准列名 `precision`、`recall`、`f2`。 |
+| `outputs/tables/final/final_threshold_policy_highlights.csv` | `final_threshold`、min cost、recall floor、FN floor 等策略敏感性高亮；不用于反向修改最终阈值。 |
 | `outputs/tables/final/final_policy_cost_comparison.csv` | official test policy 与 oof_train policy 的成本对比表；OOF 行单独标注不可与 official test 直接横向比较。 |
 
 ### Day20 final figures
@@ -469,7 +474,7 @@ Day20 不做建模、不重新选择 threshold、不连接 MySQL，只读取 Day
 | `reports/sql_business_insights.md` | SQL business insights 报告，包含 Top-K、风险工作量、成本策略、Lift/Gain、阈值敏感性和错误分析结论。 |
 | `notebooks/final/20_sql_business_insights_and_visualization.ipynb` | Day20 展示 notebook，只读取 Day19/Day20 CSV 和 final figures，不连接 MySQL。 |
 
-Day20 当前业务结论：最终候选仍是 Day14 `median_all_structural_all`，official test threshold=0.18、FP=398、FN=12、total_cost=9980；Day6 的 8640 仍是 test 回溯观察，Day16 tuned 没有泛化，Day18 ensemble 未满足进入 official test 条件。
+Day20 当前业务结论：最终候选为 Day14 `median_all_structural_all`，official test threshold=0.18、AP=0.9055、FP=398、FN=12、total_cost=9980。风险人口为 `404 / 357 / 378 / 14,861`，APS 检查队列为 `761`，复核队列为 `378`；Day6 的 8640 仅是 test 回溯观察。
 
 ## Day 21 Model interpretability and presentation audit
 

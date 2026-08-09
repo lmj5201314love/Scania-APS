@@ -1,8 +1,16 @@
+# 开发历史记录说明
+
+本文按 Day1–Day21 保留项目开发历史，早期数字和术语用于说明探索路径，不代表 v1.0 最终结论。Day6 的 `threshold=0.20 / cost=8640`、Day7 的旧风险人口与动作均已被后续 validation-based 流程替代。
+
+v1.0 唯一公开口径为：XGBoost `median_all_structural_all`，`48,000 train_inner / 12,000 valid / 16,000 official test`，threshold `0.18`，Precision `0.4770`，Recall `0.9680`，F2 `0.8027`，Average Precision `0.9055`，FP `398`，FN `12`，total cost `9980`。
+
+历史字段 `y_proba` 和“预测概率”表述实际指未校准风险分数；历史 `PR-AUC` 标签对应代码计算的 Average Precision。`neg` 表示非 APS 组件故障，不代表健康车辆。最终业务人口为 `404 / 357 / 378 / 14,861`，APS 检查队列 `761`，复核队列 `378`。
+
 # Day 1 业务理解总结
 
 ## 项目一句话说明
 
-本项目使用 Scania APS 重卡空气压力系统故障数据，预测车辆是否存在 APS 系统相关故障，并结合误报和漏报成本，支持维修优先级和风险分层决策。
+本项目使用 Scania APS 重卡空气压力系统故障数据，区分 APS 相关故障与非 APS 相关故障，并结合误报和漏报成本，支持维修优先级和风险分层决策。
 
 ## 业务背景
 
@@ -17,7 +25,7 @@ APS 系统相关故障如果被提前识别，可以帮助维修团队更早安�
 ## 标签含义
 
 - `pos`：正类，表示与 APS 系统相关的故障样本，后续建模时映射为 `1`。
-- `neg`：负类，表示非 APS 系统相关的样本，后续建模时映射为 `0`。
+- `neg`：负类，表示非 APS 组件故障样本，不代表健康车辆，后续建模时映射为 `0`。
 
 Day 1 不对标签分布下具体结论，后续会在数据理解阶段读取原始训练集后进行统计。
 
@@ -28,7 +36,7 @@ Day 1 不对标签分布下具体结论，后续会在数据理解阶段读取�
 
 ## 为什么 FN 成本远高于 FP
 
-在预测性维护场景中，多检查一辆正常车辆通常只带来人工、时间和机会成本；但漏掉一辆真实 APS 故障车辆，可能导致车辆在运营中发生更严重故障，带来停机、救援、延迟交付和更高维修费用。因此 FN 的业务损失远高于 FP。
+在预测性维护场景中，对一个非 APS 故障样本增加 APS 检查通常只带来人工、时间和机会成本；但漏掉真实 APS 故障可能带来停机、救援、延迟交付和更高维修费用。因此 FN 的业务损失远高于 FP。
 
 ## 为什么不能只看 accuracy
 
@@ -277,7 +285,9 @@ FP、FN、recall、precision、F2 和 total cost 的变化，寻找业务成本�
 
 下一步 Day 6 可以在当前统一配置入口的基础上，读取 Day 4 / Day 5 已生成的预测概率文件，进行阈值成本分析。
 
-# Day 6 阈值成本敏感性分析总结
+# Day 6 历史回溯：阈值成本敏感性分析总结
+
+本章记录 official test 上的早期回溯敏感性分析，`0.20 / 8640` 不代表 v1.0 最终阈值和成本。
 
 ## Day 6 目标
 
@@ -340,7 +350,9 @@ XGBoost + `median_all` 在 Day 5 中已经有较高 PR-AUC，说明排序能力�
 
 Day 7 建议基于 XGBoost + `median_all` 的预测概率和 Day 6 得到的低成本阈值，设计高、中、低风险分层和维修优先级建议。同时要保留说明：风险分层是当前项目阶段的业务解释方案，不是生产系统最终策略。
 
-# Day 7 风险分层与项目交付总结
+# Day 7 历史回溯：风险分层与项目交付总结
+
+本章风险人口和动作来自已废弃的早期回溯规则，仅用于开发追溯；当前口径见 Day20 和本文顶部说明。
 
 ## 最终候选方案
 
@@ -1229,9 +1241,9 @@ Day20 不建模、不重新训练、不重新选择 threshold，也不连接 MyS
 
 关键业务洞察：
 
-1. 当前最终候选仍是 Day14 `median_all_structural_all`，official test threshold=0.18，FP=398，FN=12，total_cost=9980。Day16 tuned 没有泛化，Day18 ensemble 未满足进入 official test 条件，Day6 的 8640 仍只是 test 回溯观察。
-2. Top-K 维修容量分析显示排序有业务价值：Top 50 命中 50 个真实故障，Top 100 命中 100 个，Top 200 命中 194 个，Top 500 命中 340 个，Top 1000 命中 369 个；对应 recall@K 分别为 13.33%、26.67%、51.73%、90.67%、98.40%。
-3. 风险等级工作量显示：Critical 404 个样本、真实故障率 78.22%；High 321 个样本、真实故障率 14.33%；Medium 414 个样本、真实故障率 1.93%；Low 14861 个样本、真实故障率 0.03%。Critical / High 适合作为优先检修队列，但 High 会带来较多 FP 工作量。
+1. 当前最终候选仍是 Day14 `median_all_structural_all`，official test threshold=0.18，AP=0.9055，FP=398，FN=12，total_cost=9980。Day16 tuned 没有泛化，Day18 ensemble 未满足进入 official test 条件，Day6 的 8640 仍只是 test 回溯观察。
+2. Top-K 维修容量分析显示风险分数排序有业务价值：Top 50 命中 50 个真实故障，Top 100 命中 100 个，Top 200 命中 194 个，Top 500 命中 340 个，Top 1000 命中 369 个；对应 recall@K 分别为 13.33%、26.67%、51.73%、90.67%、98.40%。
+3. 风险人口为 Critical / High / Medium / Low = `404 / 357 / 378 / 14,861`。Critical / High 共 `761` 个样本进入 APS 检查队列，Medium 的 `378` 个样本进入复核队列，Low 继续非 APS 故障诊断。
 4. 成本策略对比显示：naive_all_negative total_cost=187500，Day14 baseline=10820，Day14 final candidate=9980，Day16 tuned best=11260。final candidate 相对 naive baseline 降低 177520 成本，下降率 94.68%；相对 Day14 baseline 降低 840 成本。
 5. Decile / Lift / Gain 显示最高风险 10% 样本显著富集真实故障：decile=1 pos_rate=23.31%，overall_pos_rate=2.34%，lift=9.95，cumulative_recall@decile1=99.47%。
 6. 阈值敏感性显示 final threshold=0.18 的工作量为 761 个预测正类，FP=398，FN=12，total_cost=9980；threshold=0.07 在敏感性表中 total_cost=9470、FN=6、工作量=1016，但该结果只用于策略展示，不能反向修改最终阈值。

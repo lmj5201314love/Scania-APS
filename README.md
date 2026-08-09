@@ -2,9 +2,14 @@
 
 ## 1. 项目概览
 
-本项目基于 Scania APS 故障数据集，构建一个面向工业预测性维护场景的成本敏感建模流程。任务目标是从高维匿名传感器特征和结构性缺失数据中识别 APS 相关故障。
+本项目基于 Scania APS 故障数据集，构建面向工业预测性维护场景的成本敏感建模流程。任务是利用 170 个匿名数值特征和结构性缺失信号，区分 APS 相关故障与非 APS 相关故障。
 
 项目围绕成本敏感预测性维护展开，覆盖维修优先级排序、SQL 业务分析和模型解释性三个交付方向。
+
+- 数据来源：[UCI Machine Learning Repository - APS Failure at Scania Trucks](https://archive.ics.uci.edu/dataset/421/aps%2Bfailure%2Bat%2Bscania%2Btrucks)
+- 标签语义：`pos` 是 APS 相关故障；`neg` 是非 APS 组件故障，不代表健康车辆。
+- 技术栈：Python、pandas、scikit-learn、XGBoost、SHAP、SQL / MySQL、pytest。
+- 数据纪律：`48,000 train_inner / 12,000 valid / 16,000 official test`；预处理、特征规则、参数和阈值只在训练侧拟合或选择。
 
 ## 2. 业务问题与成本设定
 
@@ -21,7 +26,7 @@ total_cost = 10 * FP + 500 * FN
 | FP | 不必要的检查 | 10 |
 | FN | 漏检故障 / 故障停机风险 | 500 |
 
-由于数据类别极不平衡，准确率不适合作为核心指标。本项目重点关注 recall、F2、PR-AUC、FN 和 total_cost。
+由于数据类别极不平衡，准确率不适合作为核心指标。本项目重点关注 recall、F2、Average Precision（AP）、FN 和 total_cost。
 
 ## 3. 最终结果
 
@@ -30,6 +35,7 @@ total_cost = 10 * FP + 500 * FN
 - 策略：`median_all_structural_all`
 - 模型：带 `scale_pos_weight` 的 XGBoost
 - 阈值：`0.18`
+- Precision / Recall / F2 / AP：`0.4770 / 0.9680 / 0.8027 / 0.9055`
 - 官方测试集结果：`TN=15227`，`FP=398`，`TP=363`，`FN=12`
 - 总业务成本：`9980`
 
@@ -50,15 +56,15 @@ total_cost = 10 * FP + 500 * FN
 
 | Stage | Strategy / Experiment | Result | Decision |
 |---|---|---|---|
-| Baseline models | Logistic Regression / Random Forest / XGBoost | XGBoost 在成本和 PR-AUC 上更适合作为主线模型 | 保留 XGBoost |
+| Baseline models | Logistic Regression / Random Forest / XGBoost | XGBoost 的 AP 和 F2 更强，风险排序能力更适合进入后续成本敏感阈值分析 | 保留 XGBoost |
 | Missing-value strategies | `median_all`、drop high missing、missing indicator、XGBoost native missing | missing indicator 有预测信号，但 FP 偏高 | 保留为对照信号 |
 | Structural features | sample-level missing/zero、prefix zero/missing、selected missing indicators、`structural_all` | `structural_all` 在官方测试集达到 cost `9980` | 最终候选 |
 | XGBoost tuning | Day15 在 valid 上改善 | Day16 官方测试集 best tuned cost 为 `11260` | 未进入最终方案 |
 | OOF / bin projection | OOF 用于检查单一 valid split 的阈值稳定性，bin projection 只有轻微信号 | 对最终主线贡献有限 | 作为稳健性检查 |
-| OOF ensemble | 多策略概率平均 | OOF cost 略有改善，但 FN 增加 | 未进入官方测试集 |
-| SQL business analysis | Top-K、risk level、lift、threshold sensitivity | 将模型概率转化为维修容量和优先级视图 | 作为业务交付 |
+| OOF ensemble | 多策略风险分数平均 | OOF cost 略有改善，但 FN 增加 | 未进入官方测试集 |
+| SQL business analysis | Top-K、risk level、lift、threshold sensitivity | 将风险分数转化为维修容量和优先级视图 | 作为业务交付 |
 
-Day6 的 `8640` 用于展示阈值敏感性；最终报告结果采用 Day14 `median_all_structural_all`，阈值固定为 `0.18`。
+Day6 的 `threshold=0.20 / cost=8640` 只属于 official test 上的历史回溯敏感性分析。v1.0 不采用该结果，最终方案固定为 Day14 `median_all_structural_all` 和验证阶段选出的阈值 `0.18`。
 
 ## 5. 评估指标
 
@@ -68,7 +74,7 @@ Day6 的 `8640` 用于展示阈值敏感性；最终报告结果采用 Day14 `me
 |---|---|
 | Recall | 衡量捕获了多少真实 APS 故障 |
 | F2-score | 比 F1 更强调 recall，适合漏检成本更高的场景 |
-| PR-AUC | 比 accuracy 更适合稀有正类场景下的概率排序评估 |
+| Average Precision (AP) | 衡量类别不平衡场景下风险分数的排序质量；代码使用 `average_precision_score` |
 | Total Cost | 直接反映 FP / FN 的业务惩罚 |
 | Precision@K | 衡量有限检修容量下高风险队列的命中质量 |
 | Lift | 衡量真实故障是否集中在高风险分位 |
@@ -94,11 +100,11 @@ Day6 的 `8640` 用于展示阈值敏感性；最终报告结果采用 Day14 `me
 
 ![Top-K 维修容量](outputs/figures/final/final_topk_maintenance_capacity.png)
 
-Top-K 分析把概率排序转化为维修容量视图：前 500 个高风险匿名样本覆盖 340 / 375 个真实 APS 故障。
+Top-K 分析把风险分数排序转化为维修容量视图：official test 前 500 个高风险匿名样本覆盖 340 / 375 个真实 APS 故障。
 
 ![风险等级工作量](outputs/figures/final/final_risk_level_workload.png)
 
-风险等级视图展示了维修工作量分布：Critical 层级真实正类率为 78.22%，适合作为最高优先级检查队列。
+风险人口为 Critical / High / Medium / Low = `404 / 357 / 378 / 14,861`。Critical 与 High 共 `761` 个样本进入 APS 检查队列，Medium 的 `378` 个样本进入复核队列；Low 继续非 APS 故障诊断。
 
 ![分位提升分析](outputs/figures/final/final_decile_lift_gain.png)
 
@@ -149,7 +155,7 @@ Day19 将最终候选方案的预测结果和策略对比表导出为可用于 S
 
 这些 SQL 覆盖维修容量、风险等级工作量、预测错误分析、成本策略对比、监控模板、decile lift/gain 和阈值敏感性。MySQL Workbench 导入说明见 `docs/mysql_import_guide.md`。
 
-## 11. 如何复现
+## 11. 本地运行与复现入口
 
 安装依赖：
 
@@ -157,11 +163,19 @@ Day19 将最终候选方案的预测结果和策略对比表导出为可用于 S
 pip install -r requirements.txt
 ```
 
+运行自动化测试：
+
+```powershell
+python -m pytest -q
+```
+
 将 Scania APS 原始 CSV 放入：
 
 ```text
 data/raw/
 ```
+
+原始数据可从 [UCI 官方页面](https://archive.ics.uci.edu/dataset/421/aps%2Bfailure%2Bat%2Bscania%2Btrucks) 下载。
 
 原始文件名由 `config/config.yaml` 配置：
 
@@ -196,8 +210,8 @@ python scripts/19_model_interpretability.py
 
 说明：
 
-- 原始数据文件不提交到 Git。
-- 模型产物不提交，最终模型由脚本复现。
+- 原始数据、模型二进制和训练中间 prediction CSV 不提交到 Git；仓库只保留必要的最终汇总表、图和 SQL 业务导出。
+- 仓库提供本地运行入口，但不承诺跨平台、锁定依赖环境的一键完整复现。
 - MySQL 导入是可选步骤，单独记录在文档中。
 - 复现主入口是 `scripts/`；notebook 主要用于分析展示，`notebooks/archive/` 中的历史 notebook 可能依赖本地再生成的过程型 outputs。
 
